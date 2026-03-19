@@ -58,6 +58,11 @@ addopts = "-s --no-header --no-summary"
 testpaths = ["tests"]
 pythonpath = ["."]
 
+[tool.uv]
+native-tls = true
+link-mode = "copy"
+index-url = "https://artifactory.insim.biz/artifactory/api/pypi/nn-pypi/simple"
+
 [tool.ruff]
 line-length = 90
 
