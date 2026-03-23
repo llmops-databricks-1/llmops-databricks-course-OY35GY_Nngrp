@@ -95,3 +95,6 @@ dmypy.json
 # VS code configuration
 .vscode
 .history
+
+# Local scraped knowledge base artifacts
+eba_knowledge_base/
