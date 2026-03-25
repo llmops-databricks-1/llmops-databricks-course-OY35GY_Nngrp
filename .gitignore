@@ -98,3 +98,5 @@ dmypy.json
 
 # Local scraped knowledge base artifacts
 eba_knowledge_base/
+notebooks/local_eba_data_scraper.py
+notebooks/local_eba_upload_to_volume.py
