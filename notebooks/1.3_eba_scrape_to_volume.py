@@ -30,7 +30,7 @@ from loguru import logger
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StringType, StructField, StructType
 
-from your_custom_package.config import get_config, get_env
+from eba_regulatory_agent.config import get_config, get_env
 
 # COMMAND ----------
 # MAGIC %md

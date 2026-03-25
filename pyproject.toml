@@ -42,7 +42,7 @@ ci = ["pre-commit>=4.1.0, <5",
 include-package-data = true
 
 [tool.setuptools.package-data]
-"your_custom_package" = ["../../../project_config.yml"]
+"eba_regulatory_agent" = ["../../../project_config.yml"]
 
 [build-system]
 requires = ["setuptools>=72.0"]
@@ -50,7 +50,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["your_custom_package*"]
+include = ["eba_regulatory_agent*"]
 
 [tool.setuptools.dynamic]
 version = { file = "version.txt" }

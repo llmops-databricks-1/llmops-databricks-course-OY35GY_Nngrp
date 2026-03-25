@@ -5,14 +5,7 @@ import importlib
 
 def test_package_import() -> None:
     """Test that the package can be imported."""
-    package_name = "your_custom_package"
-    module = importlib.import_module(package_name)
-    assert module is not None
-
-
-def test_version_exists() -> None:
-    """Test that the package has a version attribute."""
-    package_name = "your_custom_package"
+    package_name = "eba_regulatory_agent"
     module = importlib.import_module(package_name)
     assert hasattr(module, "__version__")
     assert isinstance(module.__version__, str)
