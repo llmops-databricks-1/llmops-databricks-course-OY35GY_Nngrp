@@ -118,7 +118,7 @@ chunk_stats = chunks_df.select(
     F.avg(F.length(col("text"))).alias("avg_length"),
     F.min(F.length(col("text"))).alias("min_length"),
     F.max(F.length(col("text"))).alias("max_length"),
-    F.count("*").alias("total_chunks")
+    F.count("*").alias("total_chunks"),
 ).collect()[0]
 
 logger.info(f"Chunk Statistics:")
@@ -143,6 +143,7 @@ logger.info(f"  Max length: {chunk_stats['max_length']} characters")
 
 # COMMAND ----------
 
+
 def fixed_size_chunking(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
     """Create fixed-size chunks with overlap.
 
@@ -161,9 +162,10 @@ def fixed_size_chunking(text: str, chunk_size: int = 500, overlap: int = 50) -> 
         end = start + chunk_size
         chunk = text[start:end]
         chunks.append(chunk)
-        start += (chunk_size - overlap)
+        start += chunk_size - overlap
 
     return chunks
+
 
 # COMMAND ----------
 
@@ -185,6 +187,7 @@ logger.info(fixed_chunks[0][:200] + "...")
 
 # COMMAND ----------
 
+
 def sentence_chunking(text: str, max_sentences: int = 5) -> list[str]:
     """Create chunks based on sentence boundaries.
 
@@ -196,7 +199,7 @@ def sentence_chunking(text: str, max_sentences: int = 5) -> list[str]:
         List of text chunks
     """
     # Simple sentence splitter (can be improved with spaCy/NLTK)
-    sentences = re.split(r'(?<=[.!?])\s+', text)
+    sentences = re.split(r"(?<=[.!?])\s+", text)
 
     chunks = []
     current_chunk = []
@@ -212,6 +215,7 @@ def sentence_chunking(text: str, max_sentences: int = 5) -> list[str]:
         chunks.append(" ".join(current_chunk))
 
     return chunks
+
 
 # COMMAND ----------
 

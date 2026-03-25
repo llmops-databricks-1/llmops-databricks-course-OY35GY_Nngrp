@@ -115,7 +115,7 @@ schema = cfg.schema
 vs_manager = VectorSearchManager(
     config=cfg,
     endpoint_name=cfg.vector_search_endpoint,
-    embedding_model=cfg.embedding_endpoint
+    embedding_model=cfg.embedding_endpoint,
 )
 
 logger.info(f"Vector Search Endpoint: {vs_manager.endpoint_name}")
@@ -179,6 +179,7 @@ logger.info(f"  Embedding Model: {vs_manager.embedding_model}")
 
 # COMMAND ----------
 
+
 def parse_vector_search_results(results):
     """Parse vector search results from array format to dict format.
 
@@ -188,10 +189,11 @@ def parse_vector_search_results(results):
     Returns:
         List of dictionaries with column names as keys
     """
-    columns = [col['name'] for col in results.get('manifest', {}).get('columns', [])]
-    data_array = results.get('result', {}).get('data_array', [])
+    columns = [col["name"] for col in results.get("manifest", {}).get("columns", [])]
+    data_array = results.get("result", {}).get("data_array", [])
 
     return [dict(zip(columns, row_data)) for row_data in data_array]
+
 
 # COMMAND ----------
 
@@ -226,9 +228,7 @@ def parse_vector_search_results(results):
 query = "What are the latest techniques in machine learning?"
 
 results = index.similarity_search(
-    query_text=query,
-    columns=["text", "id", "title", "arxiv_id"],
-    num_results=5
+    query_text=query, columns=["text", "id", "title", "arxiv_id"], num_results=5
 )
 
 logger.info(f"Query: {query}\n")
@@ -258,7 +258,7 @@ results = index.similarity_search(
     query_text=query,
     columns=["text", "id", "title", "year", "authors"],
     filters={"year": "2026"},  # Only papers from 2024
-    num_results=3
+    num_results=3,
 )
 
 logger.info(f"Query: {query}")
@@ -269,7 +269,7 @@ logger.info("=" * 80)
 for i, row in enumerate(parse_vector_search_results(results), 1):
     logger.info(f"\n{i}. {row.get('title', 'N/A')}")
     logger.info(f"   Year: {row.get('year', 'N/A')}")
-    authors = row.get('authors', 'N/A')
+    authors = row.get("authors", "N/A")
     logger.info(f"   Authors: {str(authors)[:100]}...")
     logger.info(f"   Text: {row.get('text', '')[:150]}...")
 
@@ -332,7 +332,7 @@ results = index.similarity_search(
     query_text=query,
     columns=["text", "id", "title"],
     num_results=5,
-    query_type="hybrid"  # Enable hybrid search
+    query_type="hybrid",  # Enable hybrid search
 )
 
 logger.info(f"Query: {query}")
@@ -391,9 +391,7 @@ results = index.similarity_search(
     columns=["text", "id", "title", "summary"],
     num_results=5,
     query_type="hybrid",
-    reranker=DatabricksReranker(
-        columns_to_rerank=["text", "title", "summary"]
-    )
+    reranker=DatabricksReranker(columns_to_rerank=["text", "title", "summary"]),
 )
 
 logger.info(f"Query: {query}")
@@ -420,9 +418,7 @@ logger.info(f"Query: {query}\n")
 
 # Strategy 1: Basic semantic search
 results_basic = index.similarity_search(
-    query_text=query,
-    columns=["text", "title"],
-    num_results=3
+    query_text=query, columns=["text", "title"], num_results=3
 )
 
 logger.info("Strategy 1: Basic Semantic Search")
@@ -432,10 +428,7 @@ for i, row in enumerate(parse_vector_search_results(results_basic), 1):
 
 # Strategy 2: Hybrid search
 results_hybrid = index.similarity_search(
-    query_text=query,
-    columns=["text", "title"],
-    num_results=3,
-    query_type="hybrid"
+    query_text=query, columns=["text", "title"], num_results=3, query_type="hybrid"
 )
 
 logger.info("\nStrategy 2: Hybrid Search")
@@ -449,7 +442,7 @@ results_reranked = index.similarity_search(
     columns=["text", "title"],
     num_results=3,
     query_type="hybrid",
-    reranker=DatabricksReranker(columns_to_rerank=["text", "title"])
+    reranker=DatabricksReranker(columns_to_rerank=["text", "title"]),
 )
 
 logger.info("\nStrategy 3: Hybrid + Reranking")
@@ -487,8 +480,7 @@ for i, row in enumerate(parse_vector_search_results(results_reranked), 1):
 
 # Check index status
 index_info = vs_manager.client.get_index(
-    endpoint_name=vs_manager.endpoint_name,
-    index_name=vs_manager.index_name
+    endpoint_name=vs_manager.endpoint_name, index_name=vs_manager.index_name
 )
 
 logger.info("Index Information:")

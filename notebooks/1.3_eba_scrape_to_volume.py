@@ -78,7 +78,9 @@ if SCHEMA not in schemas_in_catalog:
             raise
 
 # Ensure volume exists (fallback when CREATE VOLUME is missing)
-volumes_in_schema = [v.name for v in w.volumes.list(catalog_name=CATALOG, schema_name=SCHEMA)]
+volumes_in_schema = [
+    v.name for v in w.volumes.list(catalog_name=CATALOG, schema_name=SCHEMA)
+]
 logger.info(f"Accessible volumes in {CATALOG}.{SCHEMA}: {volumes_in_schema}")
 
 if VOLUME not in volumes_in_schema:
@@ -113,16 +115,49 @@ BASE_URL = "https://www.eba.europa.eu"
 PRESS_RELEASES_URL = f"{BASE_URL}/publications-and-media/press-releases"
 
 RELEVANCE_KEYWORDS = [
-    "COREP", "FINREP", "DPM", "XBRL", "ITS on reporting", "CRR3",
-    "Basel III", "Pillar 3", "MREL", "supervisory reporting",
-    "reporting framework", "validation rules", "benchmarking",
+    "COREP",
+    "FINREP",
+    "DPM",
+    "XBRL",
+    "ITS on reporting",
+    "CRR3",
+    "Basel III",
+    "Pillar 3",
+    "MREL",
+    "supervisory reporting",
+    "reporting framework",
+    "validation rules",
+    "benchmarking",
 ]
-_KW_PATTERN = re.compile("|".join(re.escape(kw) for kw in RELEVANCE_KEYWORDS), re.IGNORECASE)
+_KW_PATTERN = re.compile(
+    "|".join(re.escape(kw) for kw in RELEVANCE_KEYWORDS), re.IGNORECASE
+)
 
 _EU_LANG_CODES = {
-    "BG", "CS", "DA", "DE", "EL", "EN", "ES", "ET", "FI", "FR",
-    "GA", "HR", "HU", "IT", "LT", "LV", "MT", "NL", "PL", "PT",
-    "RO", "SK", "SL", "SV",
+    "BG",
+    "CS",
+    "DA",
+    "DE",
+    "EL",
+    "EN",
+    "ES",
+    "ET",
+    "FI",
+    "FR",
+    "GA",
+    "HR",
+    "HU",
+    "IT",
+    "LT",
+    "LV",
+    "MT",
+    "NL",
+    "PL",
+    "PT",
+    "RO",
+    "SK",
+    "SL",
+    "SV",
 }
 _ACCEPT_LANG_CODES = {"EN", "NL"}
 _LANG_IN_STEM = re.compile(r"(?<=[_\-\(])([A-Z]{2})(?=[)_\-.]|$)")
@@ -235,6 +270,7 @@ def upload_bytes_to_volume(path_in_volume: str, content: bytes) -> None:
     with io.BytesIO(content) as fh:
         w.files.upload(path_in_volume, fh, overwrite=True)
 
+
 # COMMAND ----------
 # MAGIC %md
 # MAGIC ## 3. Test Run (One File)
@@ -289,17 +325,19 @@ while not stop and files_uploaded < MAX_FILES:
             content = fetch_bytes(doc_url)
             upload_bytes_to_volume(vol_path, content)
 
-            uploaded_records.append({
-                "volume_path": vol_path,
-                "relative_path": rel_path,
-                "section": "press_releases",
-                "press_release_id": f"{dt.strftime('%Y-%m-%d')}_{pr_slug}",
-                "filename": fname,
-                "file_extension": Path(fname).suffix.lower(),
-                "language": _detect_file_language(doc_url),
-                "source_url": doc_url,
-                "scraped_at": datetime.utcnow().isoformat(),
-            })
+            uploaded_records.append(
+                {
+                    "volume_path": vol_path,
+                    "relative_path": rel_path,
+                    "section": "press_releases",
+                    "press_release_id": f"{dt.strftime('%Y-%m-%d')}_{pr_slug}",
+                    "filename": fname,
+                    "file_extension": Path(fname).suffix.lower(),
+                    "language": _detect_file_language(doc_url),
+                    "source_url": doc_url,
+                    "scraped_at": datetime.utcnow().isoformat(),
+                }
+            )
 
             files_uploaded += 1
             logger.info(f"Uploaded ({files_uploaded}/{MAX_FILES}): {vol_path}")
@@ -308,7 +346,9 @@ while not stop and files_uploaded < MAX_FILES:
     page += 1
 
 if not uploaded_records:
-    raise RuntimeError("No files uploaded in test run. Try relaxing filters or increasing pages.")
+    raise RuntimeError(
+        "No files uploaded in test run. Try relaxing filters or increasing pages."
+    )
 
 logger.info(f"Test upload complete. Files uploaded: {len(uploaded_records)}")
 
@@ -318,17 +358,19 @@ logger.info(f"Test upload complete. Files uploaded: {len(uploaded_records)}")
 
 # COMMAND ----------
 
-doc_schema = StructType([
-    StructField("volume_path", StringType(), False),
-    StructField("relative_path", StringType(), False),
-    StructField("section", StringType(), True),
-    StructField("press_release_id", StringType(), True),
-    StructField("filename", StringType(), False),
-    StructField("file_extension", StringType(), True),
-    StructField("language", StringType(), True),
-    StructField("source_url", StringType(), True),
-    StructField("scraped_at", StringType(), True),
-])
+doc_schema = StructType(
+    [
+        StructField("volume_path", StringType(), False),
+        StructField("relative_path", StringType(), False),
+        StructField("section", StringType(), True),
+        StructField("press_release_id", StringType(), True),
+        StructField("filename", StringType(), False),
+        StructField("file_extension", StringType(), True),
+        StructField("language", StringType(), True),
+        StructField("source_url", StringType(), True),
+        StructField("scraped_at", StringType(), True),
+    ]
+)
 
 new_df = spark.createDataFrame(uploaded_records, schema=doc_schema)
 
@@ -339,7 +381,9 @@ else:
     new_df.write.format("delta").mode("overwrite").saveAsTable(TABLE_NAME)
     logger.info(f"Created table {TABLE_NAME} with {new_df.count()} rows")
 
-spark.table(TABLE_NAME).select("section", "filename", "language", "file_extension").show(20, truncate=60)
+spark.table(TABLE_NAME).select("section", "filename", "language", "file_extension").show(
+    20, truncate=60
+)
 
 # COMMAND ----------
 # MAGIC %md

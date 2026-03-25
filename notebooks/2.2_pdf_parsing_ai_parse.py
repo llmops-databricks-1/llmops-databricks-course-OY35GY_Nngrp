@@ -9,7 +9,7 @@
 # MAGIC - Storing parsed content in Delta tables
 
 # COMMAND ----------
-#%pip install ../arxiv_curator-0.1.0-py3-none-any.whl
+# %pip install ../arxiv_curator-0.1.0-py3-none-any.whl
 # COMMAND ----------
 
 from databricks.connect import DatabricksSession

@@ -49,8 +49,8 @@ def get_config(env: str = "dev") -> EbaConfig:
         EBA_CATALOG, EBA_SCHEMA, EBA_VOLUME
     """
     catalog = os.environ.get("EBA_CATALOG", _CATALOG_MAP.get(env, _CATALOG_MAP["dev"]))
-    schema  = os.environ.get("EBA_SCHEMA",  "eba_regulatory")
-    volume  = os.environ.get("EBA_VOLUME",  "eba_knowledge_base")
+    schema = os.environ.get("EBA_SCHEMA", "eba_regulatory")
+    volume = os.environ.get("EBA_VOLUME", "eba_knowledge_base")
     return EbaConfig(
         env=env,
         catalog=catalog,

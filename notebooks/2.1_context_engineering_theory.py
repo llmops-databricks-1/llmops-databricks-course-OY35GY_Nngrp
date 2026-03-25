@@ -75,14 +75,18 @@ from loguru import logger
 
 # COMMAND ----------
 
+
 # Example: Token estimation
 def estimate_tokens(text: str) -> int:
     """Rough estimation: ~4 characters per token."""
     return len(text) // 4
 
+
 # Example texts
 short_text = "Hello, world!"
-long_text = "This is a much longer piece of text that would be used in a real application. " * 100
+long_text = (
+    "This is a much longer piece of text that would be used in a real application. " * 100
+)
 
 logger.info(f"Short text: {estimate_tokens(short_text)} tokens")
 logger.info(f"Long text: {estimate_tokens(long_text)} tokens")
@@ -93,7 +97,9 @@ system_prompt_tokens = 200
 user_query_tokens = 100
 max_output_tokens = 2000
 
-available_for_context = context_window - system_prompt_tokens - user_query_tokens - max_output_tokens
+available_for_context = (
+    context_window - system_prompt_tokens - user_query_tokens - max_output_tokens
+)
 logger.info(f"\nAvailable tokens for context: {available_for_context:,}")
 logger.info(f"Approximate words: {available_for_context * 0.75:,.0f}")
 
@@ -168,10 +174,7 @@ if dbutils_client is not None:
 
 client = None
 if token is not None:
-    client = OpenAI(
-        api_key=token,
-        base_url=f"{host.rstrip('/')}/serving-endpoints"
-    )
+    client = OpenAI(api_key=token, base_url=f"{host.rstrip('/')}/serving-endpoints")
     logger.info("Using OpenAI-compatible serving client")
 else:
     logger.info("No notebook token available; using Databricks SDK serving query API")
@@ -209,10 +212,15 @@ def run_chat(messages: list[dict], max_tokens: int, temperature: float) -> str:
         max_tokens=max_tokens,
         temperature=temperature,
     )
-    if response.choices and response.choices[0].message and response.choices[0].message.content:
+    if (
+        response.choices
+        and response.choices[0].message
+        and response.choices[0].message.content
+    ):
         return response.choices[0].message.content.strip()
 
     raise RuntimeError("Serving endpoint returned no message content")
+
 
 def rewrite_query(original_query: str) -> list[str]:
     """Generate query variations for better retrieval."""
@@ -234,8 +242,9 @@ Return only the 3 variations, one per line."""
         temperature=0.7,
     )
 
-    variations = content.split('\n')
+    variations = content.split("\n")
     return [v.strip() for v in variations if v.strip()]
+
 
 # Example
 original = "How do I deploy a model in Databricks?"
@@ -265,6 +274,7 @@ for i, var in enumerate(variations, 1):
 
 # COMMAND ----------
 
+
 # Example: Context ordering strategies
 def order_context_by_relevance(chunks: list[dict]) -> list[dict]:
     """Order chunks to avoid 'lost in the middle' problem.
@@ -289,6 +299,7 @@ def order_context_by_relevance(chunks: list[dict]) -> list[dict]:
         ordered.append(chunks[1])
 
     return ordered
+
 
 # Example chunks (with mock relevance scores)
 chunks = [
@@ -323,6 +334,7 @@ for i, chunk in enumerate(ordered, 1):
 
 # COMMAND ----------
 
+
 def summarize_chunk(text: str, max_length: int = 100) -> str:
     """Summarize a text chunk using LLM."""
 
@@ -337,6 +349,7 @@ Summary:"""
         max_tokens=max_length * 2,  # Rough token estimate
         temperature=0.3,
     )
+
 
 # Example
 long_text = """
@@ -394,12 +407,13 @@ example_document = {
         "department": "engineering",
         "language": "en",
         "tags": ["databricks", "mlops", "deployment"],
-        "access_level": "internal"
-    }
+        "access_level": "internal",
+    },
 }
 
 logger.info("Example document with metadata:")
 import json
+
 logger.info(json.dumps(example_document, indent=2))
 
 # COMMAND ----------
@@ -424,13 +438,13 @@ logger.info(json.dumps(example_document, indent=2))
 
 # COMMAND ----------
 
+
 def create_rag_prompt(query: str, context_chunks: list[str]) -> str:
     """Create a RAG prompt with context."""
 
-    context = "\n\n".join([
-        f"[Document {i+1}]\n{chunk}"
-        for i, chunk in enumerate(context_chunks)
-    ])
+    context = "\n\n".join(
+        [f"[Document {i + 1}]\n{chunk}" for i, chunk in enumerate(context_chunks)]
+    )
 
     prompt = f"""Use the following context to answer the question. If the answer is not in the context, say "I don't have enough information to answer that."
 
@@ -442,6 +456,7 @@ Question: {query}
 Answer:"""
 
     return prompt
+
 
 # Example
 query = "What is Databricks?"
