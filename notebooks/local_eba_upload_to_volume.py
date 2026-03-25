@@ -239,7 +239,9 @@ for local_path in all_files:
         logger.error(f"  [FAIL] {relative}: {exc}")
         failed += 1
 
-logger.info(f"Upload complete — uploaded: {uploaded}  skipped: {skipped}  failed: {failed}")
+logger.info(
+    f"Upload complete — uploaded: {uploaded}  skipped: {skipped}  failed: {failed}"
+)
 
 # COMMAND ----------
 # MAGIC %md

@@ -90,7 +90,7 @@ if VOLUME not in volumes_in_schema:
             volume_type=VolumeType.MANAGED,
         )
         logger.info(f"Volume created: {VOLUME_PATH}")
-    except PermissionDenied:
+    except PermissionDenied as exc:
         if volumes_in_schema:
             VOLUME = volumes_in_schema[0]
             VOLUME_PATH = f"/Volumes/{CATALOG}/{SCHEMA}/{VOLUME}"
@@ -98,7 +98,7 @@ if VOLUME not in volumes_in_schema:
         else:
             raise RuntimeError(
                 f"No CREATE VOLUME permission and no existing volume in {CATALOG}.{SCHEMA}."
-            )
+            ) from exc
 
 logger.info(f"Using target path: {VOLUME_PATH}")
 logger.info(f"Using metadata table: {TABLE_NAME}")

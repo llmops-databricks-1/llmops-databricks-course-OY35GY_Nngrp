@@ -194,7 +194,10 @@ def wait_for_endpoint(endpoint_name: str, timeout_minutes: int = 30):
 
         except Exception as e:
             logger.error(f"Error checking endpoint: {e}")
-            logger.info("Tip: Check the Databricks UI -> Machine Learning -> Serving for detailed error messages")
+            logger.info(
+                "Tip: Check the Databricks UI -> Machine Learning -> Serving "
+                "for detailed error messages"
+            )
             return False
 
 # Uncomment to monitor deployment
