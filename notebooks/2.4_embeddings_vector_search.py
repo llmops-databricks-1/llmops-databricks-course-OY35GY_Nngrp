@@ -1,4 +1,4 @@
-# Databricks notebook source
+﻿# Databricks notebook source
 # MAGIC %md
 # MAGIC # Lecture 2.4: Embeddings & Vector Search
 # MAGIC
@@ -48,11 +48,11 @@ schema = cfg.schema
 # MAGIC
 # MAGIC ```
 # MAGIC Text: "machine learning"
-# MAGIC   ↓ (Embedding Model)
+# MAGIC   â†“ (Embedding Model)
 # MAGIC Vector: [0.23, -0.15, 0.67, ..., 0.42]  # 1024 dimensions
 # MAGIC
 # MAGIC Text: "artificial intelligence"
-# MAGIC   ↓ (Embedding Model)
+# MAGIC   â†“ (Embedding Model)
 # MAGIC Vector: [0.25, -0.13, 0.65, ..., 0.40]  # Similar to above!
 # MAGIC ```
 
@@ -77,29 +77,29 @@ schema = cfg.schema
 # MAGIC ## 3. Vector Search Architecture
 # MAGIC
 # MAGIC ```
-# MAGIC ┌─────────────────────────────────────────┐
-# MAGIC │     Delta Table (arxiv_chunks)          │
-# MAGIC │  - id                                    │
-# MAGIC │  - text                                  │
-# MAGIC │  - metadata (title, author, etc.)       │
-# MAGIC └──────────────┬──────────────────────────┘
-# MAGIC                │
-# MAGIC                │ (Automatic sync)
-# MAGIC                ↓
-# MAGIC ┌─────────────────────────────────────────┐
-# MAGIC │     Vector Search Index                  │
-# MAGIC │  - Embeddings generated automatically    │
-# MAGIC │  - Stored in optimized format            │
-# MAGIC │  - Supports similarity search            │
-# MAGIC └──────────────┬──────────────────────────┘
-# MAGIC                │
-# MAGIC                │ (Query)
-# MAGIC                ↓
-# MAGIC ┌─────────────────────────────────────────┐
-# MAGIC │     Search Results                       │
-# MAGIC │  - Most similar chunks                   │
-# MAGIC │  - With similarity scores                │
-# MAGIC └─────────────────────────────────────────┘
+# MAGIC â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+# MAGIC â”‚     Delta Table (arxiv_chunks)          â”‚
+# MAGIC â”‚  - id                                    â”‚
+# MAGIC â”‚  - text                                  â”‚
+# MAGIC â”‚  - metadata (title, author, etc.)       â”‚
+# MAGIC â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+# MAGIC                â”‚
+# MAGIC                â”‚ (Automatic sync)
+# MAGIC                â†“
+# MAGIC â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+# MAGIC â”‚     Vector Search Index                  â”‚
+# MAGIC â”‚  - Embeddings generated automatically    â”‚
+# MAGIC â”‚  - Stored in optimized format            â”‚
+# MAGIC â”‚  - Supports similarity search            â”‚
+# MAGIC â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+# MAGIC                â”‚
+# MAGIC                â”‚ (Query)
+# MAGIC                â†“
+# MAGIC â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+# MAGIC â”‚     Search Results                       â”‚
+# MAGIC â”‚  - Most similar chunks                   â”‚
+# MAGIC â”‚  - With similarity scores                â”‚
+# MAGIC â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 # MAGIC ```
 
 # COMMAND ----------
@@ -152,7 +152,7 @@ vs_manager.create_endpoint_if_not_exists()
 
 index = vs_manager.create_or_get_index()
 
-logger.info(f"\n✓ Vector search setup complete!")
+logger.info(f"\nâœ“ Vector search setup complete!")
 logger.info(f"  Index: {vs_manager.index_name}")
 logger.info(f"  Source: {vs_manager.catalog}.{vs_manager.schema}.arxiv_chunks")
 logger.info(f"  Embedding Model: {vs_manager.embedding_model}")
@@ -181,16 +181,16 @@ logger.info(f"  Embedding Model: {vs_manager.embedding_model}")
 
 def parse_vector_search_results(results):
     """Parse vector search results from array format to dict format.
-    
+
     Args:
         results: Raw results from similarity_search()
-        
+
     Returns:
         List of dictionaries with column names as keys
     """
     columns = [col['name'] for col in results.get('manifest', {}).get('columns', [])]
     data_array = results.get('result', {}).get('data_array', [])
-    
+
     return [dict(zip(columns, row_data)) for row_data in data_array]
 
 # COMMAND ----------
@@ -214,9 +214,9 @@ def parse_vector_search_results(results):
 # MAGIC
 # MAGIC ```
 # MAGIC Query: "machine learning techniques"
-# MAGIC   ↓ (Embedding)
+# MAGIC   â†“ (Embedding)
 # MAGIC Vector: [0.2, 0.5, -0.1, ...]
-# MAGIC   ↓ (Cosine similarity with all docs)
+# MAGIC   â†“ (Cosine similarity with all docs)
 # MAGIC Results ranked by similarity score
 # MAGIC ```
 
@@ -302,8 +302,8 @@ for i, row in enumerate(parse_vector_search_results(results), 1):
 # MAGIC - Specific product names or codes
 # MAGIC
 # MAGIC **Hybrid search** combines:
-# MAGIC - **Semantic search** (embeddings) → Captures meaning, synonyms
-# MAGIC - **Keyword search** (BM25) → Exact term matching, TF-IDF scoring
+# MAGIC - **Semantic search** (embeddings) â†’ Captures meaning, synonyms
+# MAGIC - **Keyword search** (BM25) â†’ Exact term matching, TF-IDF scoring
 # MAGIC
 # MAGIC ### How It Works
 # MAGIC
@@ -462,7 +462,7 @@ for i, row in enumerate(parse_vector_search_results(results_reranked), 1):
 # MAGIC %md
 # MAGIC ## 11. Best Practices
 # MAGIC
-# MAGIC ### ✅ Do:
+# MAGIC ### âœ… Do:
 # MAGIC 1. **Use hybrid search** for better recall
 # MAGIC 2. **Add reranking** for critical applications
 # MAGIC 3. **Filter by metadata** to narrow results
@@ -471,7 +471,7 @@ for i, row in enumerate(parse_vector_search_results(results_reranked), 1):
 # MAGIC 6. **Include relevant columns** in results
 # MAGIC 7. **Test different embedding models** for your use case
 # MAGIC
-# MAGIC ### ❌ Don't:
+# MAGIC ### âŒ Don't:
 # MAGIC 1. Retrieve too many results (increases latency)
 # MAGIC 2. Ignore index sync status
 # MAGIC 3. Use semantic search for exact keyword matches
@@ -518,13 +518,13 @@ logger.info(f"  Endpoint: {index_info.endpoint_name}")
 # MAGIC
 # MAGIC In this notebook, we learned:
 # MAGIC
-# MAGIC 1. ✅ Understanding embeddings and vector representations
-# MAGIC 2. ✅ Comparing different embedding models
-# MAGIC 3. ✅ Creating vector search endpoints
-# MAGIC 4. ✅ Creating and syncing vector search indexes
-# MAGIC 5. ✅ Basic similarity search
-# MAGIC 6. ✅ Advanced features: filters, hybrid search, reranking
-# MAGIC 7. ✅ Comparing search strategies
-# MAGIC 8. ✅ Best practices and monitoring
+# MAGIC 1. âœ… Understanding embeddings and vector representations
+# MAGIC 2. âœ… Comparing different embedding models
+# MAGIC 3. âœ… Creating vector search endpoints
+# MAGIC 4. âœ… Creating and syncing vector search indexes
+# MAGIC 5. âœ… Basic similarity search
+# MAGIC 6. âœ… Advanced features: filters, hybrid search, reranking
+# MAGIC 7. âœ… Comparing search strategies
+# MAGIC 8. âœ… Best practices and monitoring
 # MAGIC
 # MAGIC **Next**: Lecture 2.5 - Pipeline Design & Workflow

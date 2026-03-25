@@ -1,11 +1,11 @@
-# Databricks notebook source
+﻿# Databricks notebook source
 # MAGIC %md
 # MAGIC # Notebook 1.3: EBA Regulatory Publications Scraper
 # MAGIC
 # MAGIC Builds a local knowledge base of EBA publications for a regulatory reporting AI agent.
 # MAGIC
 # MAGIC **Sections scraped:**
-# MAGIC - Press releases filtered to supervisory-reporting topics (2025–2026)
+# MAGIC - Press releases filtered to supervisory-reporting topics (2025â€“2026)
 # MAGIC - `regulation-and-policy/supervisory-reporting`
 # MAGIC - `risk-and-data-analysis/reporting/reporting-frameworks`
 # MAGIC
@@ -34,7 +34,7 @@ from bs4 import BeautifulSoup
 
 # COMMAND ----------
 
-# ── Logging ───────────────────────────────────────────────────────────────────
+# â”€â”€ Logging â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -77,7 +77,7 @@ RELEVANCE_KEYWORDS: list[str] = [
     "market risk reporting",
 ]
 
-# Default target years — override via --years CLI arg for historic backfills.
+# Default target years â€” override via --years CLI arg for historic backfills.
 TARGET_YEARS: frozenset[int] = frozenset({2026})
 
 # All 24 EU official language codes (ISO 639-1).
@@ -133,7 +133,7 @@ def fetch(
             wait = BACKOFF_BASE ** attempt
             logger.warning(f"Attempt {attempt}/{MAX_RETRIES} failed for {url}: {exc}")
             if attempt < MAX_RETRIES:
-                logger.info(f"Retrying in {wait}s …")
+                logger.info(f"Retrying in {wait}s â€¦")
                 time.sleep(wait)
     logger.error(f"Giving up on {url} after {MAX_RETRIES} attempts")
     return None
@@ -227,7 +227,7 @@ def download_file(
     max_bytes: Optional[int] = None,
 ) -> Optional[str]:
     """
-    Download a document (PDF, ZIP, XLSX, XML …) to dest_dir.
+    Download a document (PDF, ZIP, XLSX, XML â€¦) to dest_dir.
     Skips files that already exist (idempotent).
     Returns the saved filename, or None on failure.
     """
@@ -246,7 +246,7 @@ def download_file(
         return filename
 
     if dry_run:
-        logger.info(f"  [DRY-RUN] Would download: {url} → {filename}")
+        logger.info(f"  [DRY-RUN] Would download: {url} â†’ {filename}")
         return filename
 
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -375,8 +375,8 @@ def _detect_file_language(url: str) -> Optional[str]:
 def is_language_acceptable(url: str) -> bool:
     """
     Return True if a file URL should be downloaded.
-    - Generic files (no EU language code in the name) → always True.
-    - Language-tagged files → only EN or NL.
+    - Generic files (no EU language code in the name) â†’ always True.
+    - Language-tagged files â†’ only EN or NL.
     """
     lang = _detect_file_language(url)
     return lang is None or lang in _ACCEPT_LANG_CODES
@@ -407,7 +407,7 @@ class DeduplicationIndex:
     def __init__(self, index_path: Path):
         self.index_path = index_path
         self.index: dict = self._load_index()
-    
+
     def _load_index(self) -> dict:
         """Load existing deduplication index or create empty one."""
         if self.index_path.exists():
@@ -416,19 +416,19 @@ class DeduplicationIndex:
             except (json.JSONDecodeError, OSError):
                 logger.warning(f"Could not load index from {self.index_path}, starting fresh")
         return {
-            "files": {},  # url → {filename, path, hash, size_kb}
-            "references": {},  # filename → [press_release_ids]
+            "files": {},  # url â†’ {filename, path, hash, size_kb}
+            "references": {},  # filename â†’ [press_release_ids]
         }
-    
+
     def save_index(self) -> None:
         """Persist index to disk."""
         self.index_path.write_text(json.dumps(self.index, indent=2, ensure_ascii=False), encoding="utf-8")
         logger.info(f"[DEDUP] Index saved: {len(self.index['files'])} unique files tracked")
-    
+
     def file_already_downloaded(self, url: str) -> Optional[dict]:
         """Check if a file URL was already downloaded. Returns file info or None."""
         return self.index["files"].get(url)
-    
+
     def record_file(self, url: str, filename: str, file_path: Path, press_release_id: str) -> None:
         """Record that a file was downloaded and which press releases reference it."""
         if url not in self.index["files"]:
@@ -439,7 +439,7 @@ class DeduplicationIndex:
                 "size_kb": size_kb,
                 "first_downloaded_at": utc_now_iso(),
             }
-        
+
         # Track which press releases reference this file
         if filename not in self.index["references"]:
             self.index["references"][filename] = []
@@ -453,14 +453,14 @@ def _extract_related_content_links(soup: BeautifulSoup) -> list[dict]:
     Returns list of {label, url} dicts.
     """
     related_links: list[dict] = []
-    
+
     # Look for a dedicated related-content container.
     # EBA often uses: <aside class="page__section page__section__related_content">.
     related_section = soup.find(
         ("aside", "section", "div"),
         class_=re.compile(r"related|related_content|section-link|link-block", re.I),
     )
-    
+
     if not related_section:
         # Fallback: locate a heading that says "Related content" and traverse nearby blocks.
         for heading in soup.find_all(("h2", "h3", "h4", "span", "strong")):
@@ -469,7 +469,7 @@ def _extract_related_content_links(soup: BeautifulSoup) -> list[dict]:
                 if container:
                     related_section = container
                     break
-    
+
     if related_section:
         for a in related_section.find_all("a", href=True):
             href = urljoin(BASE_URL, a["href"])
@@ -493,7 +493,7 @@ def _extract_related_content_links(soup: BeautifulSoup) -> list[dict]:
         label = a.get_text(" ", strip=True)
         if label and href != BASE_URL:
             related_links.append({"label": label, "url": href})
-    
+
     return related_links
 
 
@@ -509,7 +509,7 @@ def scrape_related_page(
     Downloads related documents, using deduplication to avoid re-downloading.
     Related ZIP files are size-capped to avoid very large multilingual
     taxonomy/IT bundles while still allowing small useful ZIPs.
-    
+
     Returns {title, url, files_downloaded, new_files_count}.
     """
     logger.info(f"  [RELATED] Fetching: {page_url}")
@@ -517,13 +517,13 @@ def scrape_related_page(
     resp = fetch(page_url, dry_run=dry_run)
     if resp is None:
         return {"title": page_url, "url": page_url, "files_downloaded": [], "new_files_count": 0}
-    
+
     soup = BeautifulSoup(resp.text, "html.parser")
-    
+
     # Extract page title
     title_el = soup.find("h1")
     page_title = title_el.get_text(strip=True) if title_el else page_url
-    
+
     # Find all downloadable documents
     doc_urls: dict[str, str] = {}
     content_el = soup.find("main") or soup.body or soup
@@ -541,12 +541,12 @@ def scrape_related_page(
                     continue
             label = a.get_text(strip=True) or safe_filename(full_url)
             doc_urls[full_url] = label
-    
+
     # Download with deduplication
     files_downloaded: list[dict] = []
     archive_source_map: dict[str, dict] = {}
     new_files_count = 0
-    
+
     for doc_url, label in doc_urls.items():
         # Check if already downloaded
         existing = dedup_index.file_already_downloaded(doc_url)
@@ -589,7 +589,7 @@ def scrape_related_page(
                         }
                 files_downloaded.append(file_entry)
                 new_files_count += 1
-    
+
     return {
         "title": page_title,
         "url": page_url,
@@ -746,7 +746,7 @@ def scrape_press_releases(
         items = _parse_listing_items(soup)
 
         if not items:
-            logger.info("[press_releases] Empty listing page — stopping")
+            logger.info("[press_releases] Empty listing page â€” stopping")
             break
 
         for item in items:
@@ -755,18 +755,18 @@ def scrape_press_releases(
                 logger.debug(
                     f"  Cannot parse date '{item['date']}' for: {item['title']}"
                 )
-                # Don't stop — date may be missing from listing; try to continue
+                # Don't stop â€” date may be missing from listing; try to continue
                 continue
 
             if dt.year < min(years):
                 logger.info(
-                    f"  Year {dt.year} is before {min(years)} — stopping pagination"
+                    f"  Year {dt.year} is before {min(years)} â€” stopping pagination"
                 )
                 stop_pagination = True
                 break
 
             if dt.year not in years:
-                continue  # future year or gap — keep paginating
+                continue  # future year or gap â€” keep paginating
 
             if not is_relevant(item["title"]):
                 logger.debug(f"  [SKIP] Not relevant: {item['title']}")
@@ -827,7 +827,7 @@ def scrape_press_releases(
             # NEW: Extract and follow "Related content" links
             related_content_pages: list[dict] = []
             related_links = _extract_related_content_links(pr_soup)
-            
+
             if related_links:
                 logger.info(f"  [RELATED] Found {len(related_links)} related content pages")
                 related_dir = release_dir / "related_content"
@@ -850,13 +850,13 @@ def scrape_press_releases(
                 "downloaded_files": downloaded,
                 "scraped_at": utc_now_iso(),
             }
-            
+
             if related_content_pages:
                 meta["related_content_pages"] = related_content_pages
                 meta["total_new_files_from_related"] = sum(
                     p.get("new_files_count", 0) for p in related_content_pages
                 )
-            
+
             if not dry_run:
                 meta_path.write_text(
                     json.dumps(meta, indent=2, ensure_ascii=False),
@@ -868,7 +868,7 @@ def scrape_press_releases(
         time.sleep(PAGE_DELAY)
 
     logger.info(
-        f"[press_releases] Finished — {len(collected)} relevant releases collected"
+        f"[press_releases] Finished â€” {len(collected)} relevant releases collected"
 
     )
     return collected
@@ -951,7 +951,7 @@ def scrape_section_page(
         )
 
     logger.info(
-        f"[{section_key}] Done — {len(downloaded)} files downloaded"
+        f"[{section_key}] Done â€” {len(downloaded)} files downloaded"
     )
     return meta
 
@@ -1010,7 +1010,7 @@ def run(
             json.dumps(scrape_log, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
-        logger.info(f"Scrape log saved → {log_path}")
+        logger.info(f"Scrape log saved â†’ {log_path}")
     else:
         logger.info("[DRY-RUN] Would write scrape_log.json")
 
@@ -1019,7 +1019,7 @@ def run(
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Entry Point — Notebook Widgets or CLI
+# MAGIC ## Entry Point â€” Notebook Widgets or CLI
 
 # COMMAND ----------
 
@@ -1030,7 +1030,7 @@ def _get_args() -> argparse.Namespace:
     2. argparse (when invoked from the command line)
     3. Sensible defaults (when executed interactively in a notebook REPL)
     """
-    # ── Databricks notebook context ──────────────────────────────────────────
+    # â”€â”€ Databricks notebook context â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     dbutils_client = globals().get("dbutils")
     if dbutils_client is not None:
         dbutils_client.widgets.dropdown(
@@ -1045,7 +1045,7 @@ def _get_args() -> argparse.Namespace:
             years=[2026],
         )
 
-    # ── Interactive notebook / IPython REPL ──────────────────────────────────
+    # â”€â”€ Interactive notebook / IPython REPL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if "ipykernel" in sys.modules:
         return argparse.Namespace(
             section="all",
@@ -1054,7 +1054,7 @@ def _get_args() -> argparse.Namespace:
             years=[2026],
         )
 
-    # ── CLI ───────────────────────────────────────────────────────────────────
+    # â”€â”€ CLI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     parser = argparse.ArgumentParser(
         description="EBA regulatory publications scraper"
     )

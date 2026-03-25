@@ -1,4 +1,4 @@
-# Databricks notebook source
+﻿# Databricks notebook source
 # MAGIC %md
 # MAGIC # Lecture 2.1: Context Engineering Theory
 # MAGIC
@@ -33,15 +33,15 @@
 # MAGIC
 # MAGIC ```
 # MAGIC User Query
-# MAGIC     ↓
+# MAGIC     â†“
 # MAGIC Query Embedding
-# MAGIC     ↓
+# MAGIC     â†“
 # MAGIC Vector Search (Retrieve relevant documents)
-# MAGIC     ↓
+# MAGIC     â†“
 # MAGIC Context Assembly
-# MAGIC     ↓
+# MAGIC     â†“
 # MAGIC LLM Prompt (Query + Context)
-# MAGIC     ↓
+# MAGIC     â†“
 # MAGIC Generated Response
 # MAGIC ```
 # MAGIC
@@ -216,7 +216,7 @@ def run_chat(messages: list[dict], max_tokens: int, temperature: float) -> str:
 
 def rewrite_query(original_query: str) -> list[str]:
     """Generate query variations for better retrieval."""
-    
+
     prompt = f"""Given this search query, generate 3 alternative phrasings that would help retrieve relevant information:
 
 Original query: {original_query}
@@ -268,26 +268,26 @@ for i, var in enumerate(variations, 1):
 # Example: Context ordering strategies
 def order_context_by_relevance(chunks: list[dict]) -> list[dict]:
     """Order chunks to avoid 'lost in the middle' problem.
-    
+
     Strategy: Most relevant at start, second-most at end, rest in middle.
     """
     if len(chunks) <= 2:
         return chunks
-    
+
     # Assume chunks are already sorted by relevance score
     ordered = []
-    
+
     # Most relevant at start
     ordered.append(chunks[0])
-    
+
     # Least relevant in middle
     if len(chunks) > 2:
         ordered.extend(chunks[2:-1])
-    
+
     # Second most relevant at end
     if len(chunks) > 1:
         ordered.append(chunks[1])
-    
+
     return ordered
 
 # Example chunks (with mock relevance scores)
@@ -325,7 +325,7 @@ for i, chunk in enumerate(ordered, 1):
 
 def summarize_chunk(text: str, max_length: int = 100) -> str:
     """Summarize a text chunk using LLM."""
-    
+
     prompt = f"""Summarize the following text in {max_length} words or less, preserving key information:
 
 {text}
@@ -340,13 +340,13 @@ Summary:"""
 
 # Example
 long_text = """
-Databricks is a unified analytics platform that combines data engineering, 
-data science, and machine learning. It provides a collaborative environment 
-for data teams to work together on big data and AI projects. The platform 
-is built on top of Apache Spark and offers features like Delta Lake for 
-reliable data lakes, MLflow for machine learning lifecycle management, 
-and Unity Catalog for unified governance. Databricks supports multiple 
-programming languages including Python, SQL, R, and Scala, making it 
+Databricks is a unified analytics platform that combines data engineering,
+data science, and machine learning. It provides a collaborative environment
+for data teams to work together on big data and AI projects. The platform
+is built on top of Apache Spark and offers features like Delta Lake for
+reliable data lakes, MLflow for machine learning lifecycle management,
+and Unity Catalog for unified governance. Databricks supports multiple
+programming languages including Python, SQL, R, and Scala, making it
 accessible to various types of data professionals.
 """
 
@@ -410,8 +410,8 @@ logger.info(json.dumps(example_document, indent=2))
 # MAGIC ### Effective RAG Prompts
 # MAGIC
 # MAGIC ```
-# MAGIC System: You are a helpful assistant. Use the provided context 
-# MAGIC to answer questions. If the answer is not in the context, 
+# MAGIC System: You are a helpful assistant. Use the provided context
+# MAGIC to answer questions. If the answer is not in the context,
 # MAGIC say "I don't have enough information to answer that."
 # MAGIC
 # MAGIC Context:
@@ -426,12 +426,12 @@ logger.info(json.dumps(example_document, indent=2))
 
 def create_rag_prompt(query: str, context_chunks: list[str]) -> str:
     """Create a RAG prompt with context."""
-    
+
     context = "\n\n".join([
-        f"[Document {i+1}]\n{chunk}" 
+        f"[Document {i+1}]\n{chunk}"
         for i, chunk in enumerate(context_chunks)
     ])
-    
+
     prompt = f"""Use the following context to answer the question. If the answer is not in the context, say "I don't have enough information to answer that."
 
 Context:
@@ -440,7 +440,7 @@ Context:
 Question: {query}
 
 Answer:"""
-    
+
     return prompt
 
 # Example
@@ -474,7 +474,7 @@ logger.info(prompt)
 # MAGIC %md
 # MAGIC ## 10. Best Practices Summary
 # MAGIC
-# MAGIC ### ✅ Do:
+# MAGIC ### âœ… Do:
 # MAGIC 1. Chunk documents appropriately (more in next notebook)
 # MAGIC 2. Use high-quality embeddings
 # MAGIC 3. Implement metadata filtering
@@ -483,7 +483,7 @@ logger.info(prompt)
 # MAGIC 6. Provide clear instructions in prompts
 # MAGIC 7. Handle cases where context doesn't contain the answer
 # MAGIC
-# MAGIC ### ❌ Don't:
+# MAGIC ### âŒ Don't:
 # MAGIC 1. Exceed context window limits
 # MAGIC 2. Include irrelevant information
 # MAGIC 3. Ignore the "lost in the middle" problem

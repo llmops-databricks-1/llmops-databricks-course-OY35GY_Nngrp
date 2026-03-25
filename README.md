@@ -1,4 +1,4 @@
-<h1 align="center">
+﻿<h1 align="center">
 LLMOps Course on Databricks
 </h1>
 
@@ -23,7 +23,3 @@ To create a new environment and create a lockfile, run:
 ```
 uv sync --extra dev
 ```
-
-
-
-
