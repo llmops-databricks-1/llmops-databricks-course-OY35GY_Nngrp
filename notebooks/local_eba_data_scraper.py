@@ -413,7 +413,7 @@ class DeduplicationIndex:
         if self.index_path.exists():
             try:
                 return json.load(self.index_path.open(encoding="utf-8"))
-            except (json.JSONDecodeError, IOError):
+            except (json.JSONDecodeError, OSError):
                 logger.warning(f"Could not load index from {self.index_path}, starting fresh")
         return {
             "files": {},  # url → {filename, path, hash, size_kb}

@@ -97,6 +97,7 @@ ignore = [
 "notebooks/**.py" = [
     "E501",   # line-too-long (notebooks often have longer demo lines)
     "ANN",    # flake8-annotations (optional in notebooks)
+    "I001",   # unsorted-imports (common in exploratory notebooks)
 ]
 "notebooks/local_eba_*.py" = [
     "E501",   # line-too-long
@@ -104,6 +105,9 @@ ignore = [
     "F401",   # unused-import (common in exploratory scripts)
     "I001",   # unsorted-imports
     "UP045",  # Optional[X] not needed in Python 3.12+ (stylistic)
+    "F811",   # redefined-while-unused (common in notebook cells)
+    "UP024",  # os-error-alias (stylistic)
+    "UP017",  # datetime-timezone-utc (stylistic)
 ]
 
 [tool.ruff.format]
