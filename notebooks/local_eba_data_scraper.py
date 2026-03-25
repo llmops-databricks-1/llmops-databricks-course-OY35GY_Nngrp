@@ -1,4 +1,4 @@
-﻿# Databricks notebook source
+# Databricks notebook source
 # MAGIC %md
 # MAGIC # Notebook 1.3: EBA Regulatory Publications Scraper
 # MAGIC

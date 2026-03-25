@@ -1,4 +1,4 @@
-﻿# Databricks notebook source
+# Databricks notebook source
 # MAGIC %md
 # MAGIC # Lecture 2.4: Embeddings & Vector Search
 # MAGIC
