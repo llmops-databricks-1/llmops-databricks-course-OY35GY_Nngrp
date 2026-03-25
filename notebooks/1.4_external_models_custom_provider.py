@@ -95,7 +95,33 @@ w = WorkspaceClient()
 
 # Authenticate using Databricks SDK
 host = w.config.host
-token = w.tokens.create(lifetime_seconds=1200).token_value
+
+# In many enterprise workspaces PAT creation is blocked.
+# Prefer the current notebook context token when available.
+token = None
+dbutils_client = globals().get("dbutils")
+if dbutils_client is not None:
+    try:
+        token = (
+            dbutils_client.notebook.entry_point.getDbutils()
+            .notebook()
+            .getContext()
+            .apiToken()
+            .get()
+        )
+        logger.info("Using notebook context token for endpoint queries")
+    except Exception:
+        token = None
+
+if token is None:
+    try:
+        token = w.tokens.create(lifetime_seconds=1200).token_value
+        logger.info("Using short-lived PAT created via SDK")
+    except Exception as exc:
+        raise RuntimeError(
+            "Could not acquire token for querying serving endpoint. "
+            "Notebook context token was unavailable and PAT creation is blocked."
+        ) from exc
 
 # Create OpenAI client pointing to Databricks endpoint
 client = OpenAI(

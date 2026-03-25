@@ -142,21 +142,77 @@ logger.info(f"Approximate words: {available_for_context * 0.75:,.0f}")
 # Example: Query rewriting for better retrieval
 from openai import OpenAI
 from databricks.sdk import WorkspaceClient
+from databricks.sdk.service.serving import ChatMessage, ChatMessageRole
 
 w = WorkspaceClient()
 
 # Authenticate using Databricks SDK
 host = w.config.host
-token = w.tokens.create(lifetime_seconds=1200).token_value
 
-client = OpenAI(
-    api_key=token,
-    base_url=f"{host.rstrip('/')}/serving-endpoints"
-)
+# Prefer notebook context token for OpenAI-compatible client.
+# If unavailable, use SDK query API directly (no PAT creation needed).
+token = None
+dbutils_client = globals().get("dbutils")
+if dbutils_client is not None:
+    try:
+        token = (
+            dbutils_client.notebook.entry_point.getDbutils()
+            .notebook()
+            .getContext()
+            .apiToken()
+            .get()
+        )
+        logger.info("Using notebook context token")
+    except Exception:
+        token = None
+
+client = None
+if token is not None:
+    client = OpenAI(
+        api_key=token,
+        base_url=f"{host.rstrip('/')}/serving-endpoints"
+    )
+    logger.info("Using OpenAI-compatible serving client")
+else:
+    logger.info("No notebook token available; using Databricks SDK serving query API")
 
 # Use an available model from your workspace
 MODEL_NAME = "databricks-llama-4-maverick"  # Change to match your available models
 logger.info(f"Using model: {MODEL_NAME}")
+
+
+def run_chat(messages: list[dict], max_tokens: int, temperature: float) -> str:
+    """Run chat completion via OpenAI-compatible or SDK endpoint APIs."""
+    if client is not None:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+        return response.choices[0].message.content.strip()
+
+    sdk_messages = []
+    for message in messages:
+        role_value = str(message.get("role", "user")).lower()
+        if role_value == "system":
+            role = ChatMessageRole.SYSTEM
+        elif role_value == "assistant":
+            role = ChatMessageRole.ASSISTANT
+        else:
+            role = ChatMessageRole.USER
+        sdk_messages.append(ChatMessage(role=role, content=message.get("content", "")))
+
+    response = w.serving_endpoints.query(
+        name=MODEL_NAME,
+        messages=sdk_messages,
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+    if response.choices and response.choices[0].message and response.choices[0].message.content:
+        return response.choices[0].message.content.strip()
+
+    raise RuntimeError("Serving endpoint returned no message content")
 
 def rewrite_query(original_query: str) -> list[str]:
     """Generate query variations for better retrieval."""
@@ -172,14 +228,13 @@ Generate 3 variations that:
 
 Return only the 3 variations, one per line."""
 
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
+    content = run_chat(
         messages=[{"role": "user", "content": prompt}],
         max_tokens=200,
-        temperature=0.7
+        temperature=0.7,
     )
-    
-    variations = response.choices[0].message.content.strip().split('\n')
+
+    variations = content.split('\n')
     return [v.strip() for v in variations if v.strip()]
 
 # Example
@@ -277,14 +332,11 @@ def summarize_chunk(text: str, max_length: int = 100) -> str:
 
 Summary:"""
 
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
+    return run_chat(
         messages=[{"role": "user", "content": prompt}],
         max_tokens=max_length * 2,  # Rough token estimate
-        temperature=0.3
+        temperature=0.3,
     )
-    
-    return response.choices[0].message.content.strip()
 
 # Example
 long_text = """
