@@ -69,6 +69,7 @@ link-mode = "copy"
 [tool.ruff]
 line-length = 90
 
+[tool.ruff.lint]
 select = [
     "F",    # pyflakes rules
     "E",    # pycodestyle error rules
@@ -112,3 +113,6 @@ ignore = [
 
 [tool.ruff.format]
 indent-style = "space"
+
+
+
