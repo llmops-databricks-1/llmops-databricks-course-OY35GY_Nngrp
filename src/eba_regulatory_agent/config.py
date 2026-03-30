@@ -13,6 +13,14 @@ class EbaConfig:
     schema: str
     volume: str
     volume_path: str
+    vector_search_endpoint: str
+    embedding_endpoint: str
+    llm_endpoint: str
+
+    @property
+    def full_schema_name(self) -> str:
+        """Fully qualified schema name (catalog.schema)."""
+        return f"{self.catalog}.{self.schema}"
 
 
 # Catalog names per deployment target (matches databricks.yml targets).
@@ -49,12 +57,18 @@ def get_config(env: str = "dev") -> EbaConfig:
         EBA_CATALOG, EBA_SCHEMA, EBA_VOLUME
     """
     catalog = os.environ.get("EBA_CATALOG", _CATALOG_MAP.get(env, _CATALOG_MAP["dev"]))
-    schema = os.environ.get("EBA_SCHEMA", "eba_regulatory")
+    schema = os.environ.get("EBA_SCHEMA", "tom_schouten")
     volume = os.environ.get("EBA_VOLUME", "eba_knowledge_base")
+    vector_search_endpoint = os.environ.get("EBA_VS_ENDPOINT", "eba_vs_endpoint")
+    embedding_endpoint = os.environ.get("EBA_EMBEDDING_ENDPOINT", "databricks-gte-large-en")
+    llm_endpoint = os.environ.get("EBA_LLM_ENDPOINT", "databricks-meta-llama-3-3-70b-instruct")
     return EbaConfig(
         env=env,
         catalog=catalog,
         schema=schema,
         volume=volume,
         volume_path=f"/Volumes/{catalog}/{schema}/{volume}",
+        vector_search_endpoint=vector_search_endpoint,
+        embedding_endpoint=embedding_endpoint,
+        llm_endpoint=llm_endpoint,
     )

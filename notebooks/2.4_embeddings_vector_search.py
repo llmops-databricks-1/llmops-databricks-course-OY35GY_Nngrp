@@ -2,33 +2,42 @@
 # MAGIC %md
 # MAGIC # Lecture 2.4: Embeddings & Vector Search
 # MAGIC
-# MAGIC ## Topics Covered:
-# MAGIC - Understanding embeddings
-# MAGIC - Different embedding models
-# MAGIC - Creating vector search endpoints
-# MAGIC - Creating and syncing vector search indexes
-# MAGIC - Querying with similarity search
-# MAGIC - Advanced options: filters, hybrid search, reranking
+# MAGIC ## Topics Covered
+# MAGIC - Understanding embeddings and vector representations
+# MAGIC - Embedding model comparison
+# MAGIC - Creating a Vector Search endpoint and index
+# MAGIC - Similarity search, hybrid search, and reranking
+# MAGIC - Metadata filtering and search-quality comparison
+# MAGIC
+# MAGIC ### Pipeline Context
+# MAGIC
+# MAGIC ```
+# MAGIC eba_chunks table (from 2.3)
+# MAGIC     ↓  Delta Sync + embedding model
+# MAGIC Vector Search Index
+# MAGIC     ↓  query
+# MAGIC Search Results (scores + metadata)
+# MAGIC ```
 
 # COMMAND ----------
 
-from loguru import logger
-from pyspark.sql import SparkSession
-from databricks.vector_search.client import VectorSearchClient
+from databricks.connect import DatabricksSession
 from databricks.vector_search.reranker import DatabricksReranker
+from loguru import logger
 
-from arxiv_curator.config import load_config, get_env
-from arxiv_curator.vector_search import VectorSearchManager
+from eba_regulatory_agent.config import get_config, get_env
+from eba_regulatory_agent.vector_search import VectorSearchManager
 
 # COMMAND ----------
 
-spark = SparkSession.builder.getOrCreate()
+spark = DatabricksSession.builder.getOrCreate()
 
-# Load configuration
 env = get_env(spark)
-cfg = load_config("../project_config.yml", env)
+cfg = get_config(env)
 catalog = cfg.catalog
 schema = cfg.schema
+
+logger.info(f"Catalog: {catalog} | Schema: {schema}")
 
 # COMMAND ----------
 
@@ -48,11 +57,11 @@ schema = cfg.schema
 # MAGIC
 # MAGIC ```
 # MAGIC Text: "machine learning"
-# MAGIC   â†“ (Embedding Model)
+# MAGIC   ↓  (Embedding Model)
 # MAGIC Vector: [0.23, -0.15, 0.67, ..., 0.42]  # 1024 dimensions
 # MAGIC
 # MAGIC Text: "artificial intelligence"
-# MAGIC   â†“ (Embedding Model)
+# MAGIC   ↓  (Embedding Model)
 # MAGIC Vector: [0.25, -0.13, 0.65, ..., 0.40]  # Similar to above!
 # MAGIC ```
 
@@ -77,122 +86,77 @@ schema = cfg.schema
 # MAGIC ## 3. Vector Search Architecture
 # MAGIC
 # MAGIC ```
-# MAGIC â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-# MAGIC â”‚     Delta Table (arxiv_chunks)          â”‚
-# MAGIC â”‚  - id                                    â”‚
-# MAGIC â”‚  - text                                  â”‚
-# MAGIC â”‚  - metadata (title, author, etc.)       â”‚
-# MAGIC â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-# MAGIC                â”‚
-# MAGIC                â”‚ (Automatic sync)
-# MAGIC                â†“
-# MAGIC â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-# MAGIC â”‚     Vector Search Index                  â”‚
-# MAGIC â”‚  - Embeddings generated automatically    â”‚
-# MAGIC â”‚  - Stored in optimized format            â”‚
-# MAGIC â”‚  - Supports similarity search            â”‚
-# MAGIC â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-# MAGIC                â”‚
-# MAGIC                â”‚ (Query)
-# MAGIC                â†“
-# MAGIC â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-# MAGIC â”‚     Search Results                       â”‚
-# MAGIC â”‚  - Most similar chunks                   â”‚
-# MAGIC â”‚  - With similarity scores                â”‚
-# MAGIC â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+# MAGIC ┌──────────────────────────────────────────────┐
+# MAGIC │     Delta Table (eba_chunks)                  │
+# MAGIC │  - chunk_index      (primary key)             │
+# MAGIC │  - chunk_text       (embedding source)        │
+# MAGIC │  - file_name, category, volume_path           │
+# MAGIC └──────────────────┬───────────────────────────┘
+# MAGIC                    │  Delta Sync (TRIGGERED)
+# MAGIC                    ↓
+# MAGIC ┌──────────────────────────────────────────────┐
+# MAGIC │     Vector Search Index                       │
+# MAGIC │  - Embeddings generated automatically         │
+# MAGIC │  - Stored in optimised ANN format             │
+# MAGIC │  - Supports similarity + hybrid search        │
+# MAGIC └──────────────────┬───────────────────────────┘
+# MAGIC                    │  Query
+# MAGIC                    ↓
+# MAGIC ┌──────────────────────────────────────────────┐
+# MAGIC │     Search Results                            │
+# MAGIC │  - Most similar chunks with scores            │
+# MAGIC │  - Metadata for filtering / display           │
+# MAGIC └──────────────────────────────────────────────┘
 # MAGIC ```
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 4. Create Vector Search Endpoint
+# MAGIC ## 4. Create Vector Search Endpoint & Index
 
 # COMMAND ----------
 
-# Using VectorSearchManager from arxiv_curator.vector_search
-# This handles endpoint and index creation automatically
+vs_manager = VectorSearchManager(config=cfg)
 
-vs_manager = VectorSearchManager(
-    config=cfg,
-    endpoint_name=cfg.vector_search_endpoint,
-    embedding_model=cfg.embedding_endpoint,
-)
-
-logger.info(f"Vector Search Endpoint: {vs_manager.endpoint_name}")
-logger.info(f"Embedding Model: {vs_manager.embedding_model}")
-logger.info(f"Index Name: {vs_manager.index_name}")
+logger.info(f"Endpoint       : {vs_manager.endpoint_name}")
+logger.info(f"Embedding model: {vs_manager.embedding_model}")
+logger.info(f"Index name     : {vs_manager.index_name}")
+logger.info(f"Source table   : {vs_manager.source_table}")
 
 # COMMAND ----------
 
-# Create endpoint if it doesn't exist
+# Create endpoint (if it doesn't already exist)
 vs_manager.create_endpoint_if_not_exists()
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ### Endpoint Types:
-# MAGIC
-# MAGIC - **STANDARD**: General purpose, good performance
-# MAGIC - **STANDARD_LARGE**: Higher throughput, more expensive
-# MAGIC
-# MAGIC For development and most production workloads, STANDARD is sufficient.
+# Create (or retrieve) the Delta Sync index
+vs_manager.create_or_get_index()
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 5. Create Vector Search Index
+# MAGIC ### Index Configuration
+# MAGIC
+# MAGIC | Option | Value | Explanation |
+# MAGIC |--------|-------|-------------|
+# MAGIC | `pipeline_type` | `TRIGGERED` | Sync on demand — ideal for batch pipelines |
+# MAGIC | `primary_key` | `chunk_index` | Positional chunk identifier |
+# MAGIC | `embedding_source_column` | `chunk_text` | The cleaned paragraph text |
+# MAGIC | `embedding_model_endpoint_name` | `databricks-gte-large-en` | Free Databricks model |
 
 # COMMAND ----------
 
-# Create or get the vector search index using VectorSearchManager
-# This automatically:
-# - Creates the index if it doesn't exist
-# - Configures it with the embedding model
-# - Sets up delta sync with the arxiv_chunks table
-
-index = vs_manager.create_or_get_index()
-
-logger.info(f"\nâœ“ Vector search setup complete!")
-logger.info(f"  Index: {vs_manager.index_name}")
-logger.info(f"  Source: {vs_manager.catalog}.{vs_manager.schema}.arxiv_chunks")
-logger.info(f"  Embedding Model: {vs_manager.embedding_model}")
+# Trigger an initial sync so embeddings are computed
+vs_manager.sync_index()
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Index Configuration Options:
+# MAGIC ## 6. Helper: Parsing Results
 # MAGIC
-# MAGIC - **pipeline_type**:
-# MAGIC   - `TRIGGERED`: Manual sync, good for batch processing
-# MAGIC   - `CONTINUOUS`: Auto-sync with Change Data Feed, real-time updates
-# MAGIC
-# MAGIC - **primary_key**: Unique identifier for each document
-# MAGIC
-# MAGIC - **embedding_source_column**: The text column to embed
-# MAGIC
-# MAGIC - **embedding_model_endpoint_name**: Which embedding model to use
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 6. Helper Function for Parsing Results
-
-# COMMAND ----------
-
-
-def parse_vector_search_results(results):
-    """Parse vector search results from array format to dict format.
-
-    Args:
-        results: Raw results from similarity_search()
-
-    Returns:
-        List of dictionaries with column names as keys
-    """
-    columns = [col["name"] for col in results.get("manifest", {}).get("columns", [])]
-    data_array = results.get("result", {}).get("data_array", [])
-
-    return [dict(zip(columns, row_data)) for row_data in data_array]
+# MAGIC `VectorSearchManager.parse_results(results)` converts the raw array response
+# MAGIC from `similarity_search()` into a list of plain dicts keyed by column name.
 
 
 # COMMAND ----------
@@ -216,83 +180,62 @@ def parse_vector_search_results(results):
 # MAGIC
 # MAGIC ```
 # MAGIC Query: "machine learning techniques"
-# MAGIC   â†“ (Embedding)
+# MAGIC   ↓  (Embedding)
 # MAGIC Vector: [0.2, 0.5, -0.1, ...]
-# MAGIC   â†“ (Cosine similarity with all docs)
+# MAGIC   ↓  (Cosine similarity with all docs)
 # MAGIC Results ranked by similarity score
 # MAGIC ```
 
 # COMMAND ----------
 
 # Simple similarity search
-query = "What are the latest techniques in machine learning?"
+query = "What are the capital requirements for credit risk under Basel III?"
 
-results = index.similarity_search(
-    query_text=query, columns=["text", "id", "title", "arxiv_id"], num_results=5
-)
+results = vs_manager.search(query, num_results=5)
 
 logger.info(f"Query: {query}\n")
 logger.info("Top 5 Results:")
 logger.info("=" * 80)
 
-# Parse results using helper function
-for i, row in enumerate(parse_vector_search_results(results), 1):
-    logger.info(f"\n{i}. Paper: {row.get('title', 'N/A')}")
-    logger.info(f"   arXiv ID: {row.get('arxiv_id', 'N/A')}")
-    logger.info(f"   Chunk ID: {row.get('id', 'N/A')}")
-    logger.info(f"   Text preview: {row.get('text', '')[:200]}...")
-    logger.info(f"   Score: {row.get('score', 'N/A'):.4f}")
+for i, row in enumerate(VectorSearchManager.parse_results(results), 1):
+    logger.info(f"\n{i}. File    : {row.get('file_name', 'N/A')}")
+    logger.info(f"   Category: {row.get('category', 'N/A')}")
+    logger.info(f"   Chunk   : {row.get('chunk_index', 'N/A')}")
+    logger.info(f"   Text    : {row.get('chunk_text', '')[:200]}...")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 7. Advanced Search: Filters
-
-# COMMAND ----------
-
-# Search with metadata filters
-query = "neural networks and deep learning"
-
-# Filter for papers from 2024 or later
-results = index.similarity_search(
-    query_text=query,
-    columns=["text", "id", "title", "year", "authors"],
-    filters={"year": "2026"},  # Only papers from 2024
-    num_results=3,
-)
-
-logger.info(f"Query: {query}")
-logger.info(f"Filter: year = 2026\n")
-logger.info("Results:")
-logger.info("=" * 80)
-
-for i, row in enumerate(parse_vector_search_results(results), 1):
-    logger.info(f"\n{i}. {row.get('title', 'N/A')}")
-    logger.info(f"   Year: {row.get('year', 'N/A')}")
-    authors = row.get("authors", "N/A")
-    logger.info(f"   Authors: {str(authors)[:100]}...")
-    logger.info(f"   Text: {row.get('text', '')[:150]}...")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Filter Examples:
+# MAGIC ## 8. Metadata Filtering
+# MAGIC
+# MAGIC Narrow results to a specific EBA document category.
 # MAGIC
 # MAGIC ```python
 # MAGIC # Single filter
-# MAGIC filters = {"year": "2024"}
+# MAGIC filters = {"category": "LCR"}
 # MAGIC
 # MAGIC # Multiple filters (AND)
-# MAGIC filters = {"year": "2024", "month": "01"}
-# MAGIC
-# MAGIC # Range filter
-# MAGIC filters = {"year >= 2023"}
+# MAGIC filters = {"category": "COREP", "file_name": "ITS_2021_03.pdf"}
 # MAGIC ```
+
+results = vs_manager.search(
+    query, num_results=3, filters={"category": "LCR"}
+)
+
+logger.info(f"Query: {query}")
+logger.info(f"Filter: category = LCR\n")
+logger.info("Results:")
+logger.info("=" * 80)
+
+for i, row in enumerate(VectorSearchManager.parse_results(results), 1):
+    logger.info(f"\n{i}. {row.get('file_name', 'N/A')}")
+    logger.info(f"   Category: {row.get('category', 'N/A')}")
+    logger.info(f"   Text    : {row.get('chunk_text', '')[:200]}...")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 8. Hybrid Search: Semantic + Keyword
+# MAGIC ## 9. Hybrid Search: Semantic + Keyword (BM25)
 # MAGIC
 # MAGIC ### Why Hybrid Search?
 # MAGIC
@@ -326,13 +269,10 @@ for i, row in enumerate(parse_vector_search_results(results), 1):
 # COMMAND ----------
 
 # Hybrid search example
-query = "transformer architecture attention mechanism"
+query = "own funds requirements COREP reporting templates"
 
-results = index.similarity_search(
-    query_text=query,
-    columns=["text", "id", "title"],
-    num_results=5,
-    query_type="hybrid",  # Enable hybrid search
+results = vs_manager.search(
+    query, num_results=5, query_type="hybrid"
 )
 
 logger.info(f"Query: {query}")
@@ -340,14 +280,14 @@ logger.info("Search Type: Hybrid (Semantic + Keyword)\n")
 logger.info("Results:")
 logger.info("=" * 80)
 
-for i, row in enumerate(parse_vector_search_results(results), 1):
-    logger.info(f"\n{i}. {row.get('title', 'N/A')}")
-    logger.info(f"   Text: {row.get('text', '')[:200]}...")
+for i, row in enumerate(VectorSearchManager.parse_results(results), 1):
+    logger.info(f"\n{i}. {row.get('file_name', 'N/A')}")
+    logger.info(f"   Text: {row.get('chunk_text', '')[:200]}...")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 9. Reranking for Higher Precision
+# MAGIC ## 10. Reranking for Higher Precision
 # MAGIC
 # MAGIC ### The Two-Stage Retrieval Pattern
 # MAGIC
@@ -384,78 +324,73 @@ for i, row in enumerate(parse_vector_search_results(results), 1):
 # COMMAND ----------
 
 # Search with reranking
-query = "large language models for code generation"
+query = "supervisory disclosure requirements under Pillar 3"
 
-results = index.similarity_search(
-    query_text=query,
-    columns=["text", "id", "title", "summary"],
+results = vs_manager.search(
+    query,
     num_results=5,
     query_type="hybrid",
-    reranker=DatabricksReranker(columns_to_rerank=["text", "title", "summary"]),
+    reranker=DatabricksReranker(columns_to_rerank=["chunk_text"]),
 )
 
 logger.info(f"Query: {query}")
-logger.info("With reranking on: text, title, summary\n")
+logger.info("With reranking on: chunk_text\n")
 logger.info("Results:")
 logger.info("=" * 80)
 
-for i, row in enumerate(parse_vector_search_results(results), 1):
-    logger.info(f"\n{i}. {row.get('title', 'N/A')}")
-    logger.info(f"   Summary: {row.get('summary', '')[:150]}...")
-    logger.info(f"   Text: {row.get('text', '')[:150]}...")
+for i, row in enumerate(VectorSearchManager.parse_results(results), 1):
+    logger.info(f"\n{i}. {row.get('file_name', 'N/A')}")
+    logger.info(f"   Text: {row.get('chunk_text', '')[:200]}...")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 10. Search Quality Comparison
+# MAGIC ## 11. Search Quality Comparison
 
 # COMMAND ----------
 
 # Compare different search strategies
-query = "attention mechanisms in transformers"
+query = "minimum capital requirements for market risk"
 
 logger.info(f"Query: {query}\n")
 
+COLS = ["file_name", "category", "chunk_text"]
+
 # Strategy 1: Basic semantic search
-results_basic = index.similarity_search(
-    query_text=query, columns=["text", "title"], num_results=3
-)
+results_basic = vs_manager.search(query, num_results=3)
 
 logger.info("Strategy 1: Basic Semantic Search")
 logger.info("-" * 80)
-for i, row in enumerate(parse_vector_search_results(results_basic), 1):
-    logger.info(f"{i}. {row.get('title', 'N/A')[:60]}...")
+for i, row in enumerate(VectorSearchManager.parse_results(results_basic), 1):
+    logger.info(f"{i}. [{row.get('category','N/A')}] {row.get('file_name','N/A')[:60]}")
 
 # Strategy 2: Hybrid search
-results_hybrid = index.similarity_search(
-    query_text=query, columns=["text", "title"], num_results=3, query_type="hybrid"
-)
+results_hybrid = vs_manager.search(query, num_results=3, query_type="hybrid")
 
 logger.info("\nStrategy 2: Hybrid Search")
 logger.info("-" * 80)
-for i, row in enumerate(parse_vector_search_results(results_hybrid), 1):
-    logger.info(f"{i}. {row.get('title', 'N/A')[:60]}...")
+for i, row in enumerate(VectorSearchManager.parse_results(results_hybrid), 1):
+    logger.info(f"{i}. [{row.get('category','N/A')}] {row.get('file_name','N/A')[:60]}")
 
 # Strategy 3: Hybrid + Reranking
-results_reranked = index.similarity_search(
-    query_text=query,
-    columns=["text", "title"],
+results_reranked = vs_manager.search(
+    query,
     num_results=3,
     query_type="hybrid",
-    reranker=DatabricksReranker(columns_to_rerank=["text", "title"]),
+    reranker=DatabricksReranker(columns_to_rerank=["chunk_text"]),
 )
 
 logger.info("\nStrategy 3: Hybrid + Reranking")
 logger.info("-" * 80)
-for i, row in enumerate(parse_vector_search_results(results_reranked), 1):
-    logger.info(f"{i}. {row.get('title', 'N/A')[:60]}...")
+for i, row in enumerate(VectorSearchManager.parse_results(results_reranked), 1):
+    logger.info(f"{i}. [{row.get('category','N/A')}] {row.get('file_name','N/A')[:60]}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 11. Best Practices
+# MAGIC ## 12. Best Practices
 # MAGIC
-# MAGIC ### âœ… Do:
+# MAGIC ### ✅ Do:
 # MAGIC 1. **Use hybrid search** for better recall
 # MAGIC 2. **Add reranking** for critical applications
 # MAGIC 3. **Filter by metadata** to narrow results
@@ -464,7 +399,7 @@ for i, row in enumerate(parse_vector_search_results(results_reranked), 1):
 # MAGIC 6. **Include relevant columns** in results
 # MAGIC 7. **Test different embedding models** for your use case
 # MAGIC
-# MAGIC ### âŒ Don't:
+# MAGIC ### ❌ Don't:
 # MAGIC 1. Retrieve too many results (increases latency)
 # MAGIC 2. Ignore index sync status
 # MAGIC 3. Use semantic search for exact keyword matches
@@ -474,33 +409,28 @@ for i, row in enumerate(parse_vector_search_results(results_reranked), 1):
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 12. Monitoring and Maintenance
+# MAGIC ## 13. Index Monitoring
 
 # COMMAND ----------
 
 # Check index status
-index_info = vs_manager.client.get_index(
-    endpoint_name=vs_manager.endpoint_name, index_name=vs_manager.index_name
-)
+index_info = vs_manager.client.get_index(index_name=vs_manager.index_name)
 
 logger.info("Index Information:")
-logger.info(f"  Name: {index_info.name}")
-logger.info(f"  Endpoint: {index_info.endpoint_name}")
+logger.info(f"  Name    : {vs_manager.index_name}")
+logger.info(f"  Endpoint: {vs_manager.endpoint_name}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Index Maintenance:
+# MAGIC ### Index Maintenance
 # MAGIC
 # MAGIC ```python
-# MAGIC # Sync index manually (for TRIGGERED pipeline)
-# MAGIC index.sync()
+# MAGIC # Trigger a manual sync (for TRIGGERED pipeline)
+# MAGIC vs_manager.sync_index()
 # MAGIC
 # MAGIC # Delete index (if needed)
 # MAGIC # vs_manager.client.delete_index(index_name=vs_manager.index_name)
-# MAGIC
-# MAGIC # Update index (change configuration)
-# MAGIC # Requires recreation in most cases
 # MAGIC ```
 
 # COMMAND ----------
@@ -510,13 +440,13 @@ logger.info(f"  Endpoint: {index_info.endpoint_name}")
 # MAGIC
 # MAGIC In this notebook, we learned:
 # MAGIC
-# MAGIC 1. âœ… Understanding embeddings and vector representations
-# MAGIC 2. âœ… Comparing different embedding models
-# MAGIC 3. âœ… Creating vector search endpoints
-# MAGIC 4. âœ… Creating and syncing vector search indexes
-# MAGIC 5. âœ… Basic similarity search
-# MAGIC 6. âœ… Advanced features: filters, hybrid search, reranking
-# MAGIC 7. âœ… Comparing search strategies
-# MAGIC 8. âœ… Best practices and monitoring
+# MAGIC 1. ✅ Understanding embeddings and vector representations
+# MAGIC 2. ✅ Comparing different embedding models
+# MAGIC 3. ✅ Creating vector search endpoints
+# MAGIC 4. ✅ Creating and syncing vector search indexes
+# MAGIC 5. ✅ Basic similarity search
+# MAGIC 6. ✅ Advanced features: filters, hybrid search, reranking
+# MAGIC 7. ✅ Comparing search strategies
+# MAGIC 8. ✅ Best practices and monitoring
 # MAGIC
 # MAGIC **Next**: Lecture 2.5 - Pipeline Design & Workflow
