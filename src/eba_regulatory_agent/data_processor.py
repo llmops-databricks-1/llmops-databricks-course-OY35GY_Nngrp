@@ -1,6 +1,6 @@
 """EBA regulatory PDF processing — parse PDFs from Volume using ai_parse_document."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from loguru import logger
 from pyspark.sql import DataFrame, SparkSession
@@ -65,9 +65,7 @@ class DataProcessor:
             return results
 
         records = _recurse(self.config.volume_path)
-        logger.info(
-            f"Found {len(records)} document(s) in {self.config.volume_path}"
-        )
+        logger.info(f"Found {len(records)} document(s) in {self.config.volume_path}")
         return self.spark.createDataFrame(records)
 
     def parse_pdfs_with_ai(self) -> int:
@@ -91,12 +89,9 @@ class DataProcessor:
         try:
             existing_df = self.spark.table(self.parsed_table_fqn)
             already_parsed = {
-                row.volume_path
-                for row in existing_df.select("volume_path").collect()
+                row.volume_path for row in existing_df.select("volume_path").collect()
             }
-            logger.info(
-                f"{len(already_parsed)} document(s) already parsed — skipping."
-            )
+            logger.info(f"{len(already_parsed)} document(s) already parsed — skipping.")
         except Exception:
             # The parsed table may not exist on first run.
             already_parsed = set()
@@ -112,8 +107,7 @@ class DataProcessor:
         logger.info(f"Parsing {n_new} new document(s)…")
 
         binary_df = (
-            binary_df
-            .withColumn("file_name", F.regexp_extract("path", r"[^/]+$", 0))
+            binary_df.withColumn("file_name", F.regexp_extract("path", r"[^/]+$", 0))
             .withColumn("category", F.regexp_extract("path", r"/([^/]+)/[^/]+$", 1))
             .withColumnRenamed("path", "volume_path")
         )
@@ -127,13 +121,12 @@ class DataProcessor:
                 CAST(
                     ai_parse_document(content, map('mode', 'TEXT')) AS STRING
                 ) AS parsed_content,
-                '{datetime.now(timezone.utc).isoformat()}' AS parsed_at
+                '{datetime.now(UTC).isoformat()}' AS parsed_at
             FROM _eba_new_docs
         """)
 
         (
-            parsed_df.write
-            .format("delta")
+            parsed_df.write.format("delta")
             .mode("append")
             .option("mergeSchema", "true")
             .saveAsTable(self.parsed_table_fqn)

@@ -111,6 +111,7 @@ if sample_row:
     elements = parsed_json.get("document", {}).get("elements", [])
     if elements:
         from collections import Counter
+
         type_counts = Counter(e.get("type", "unknown") for e in elements)
         logger.info(f"Element types: {dict(type_counts)}")
         text_elements = [e for e in elements if e.get("type") == "text"][:3]

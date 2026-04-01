@@ -218,9 +218,7 @@ for i, row in enumerate(VectorSearchManager.parse_results(results), 1):
 # MAGIC filters = {"category": "COREP", "file_name": "ITS_2021_03.pdf"}
 # MAGIC ```
 
-results = vs_manager.search(
-    query, num_results=3, filters={"category": "LCR"}
-)
+results = vs_manager.search(query, num_results=3, filters={"category": "LCR"})
 
 logger.info(f"Query: {query}")
 logger.info(f"Filter: category = LCR\n")
@@ -271,9 +269,7 @@ for i, row in enumerate(VectorSearchManager.parse_results(results), 1):
 # Hybrid search example
 query = "own funds requirements COREP reporting templates"
 
-results = vs_manager.search(
-    query, num_results=5, query_type="hybrid"
-)
+results = vs_manager.search(query, num_results=5, query_type="hybrid")
 
 logger.info(f"Query: {query}")
 logger.info("Search Type: Hybrid (Semantic + Keyword)\n")
@@ -362,7 +358,7 @@ results_basic = vs_manager.search(query, num_results=3)
 logger.info("Strategy 1: Basic Semantic Search")
 logger.info("-" * 80)
 for i, row in enumerate(VectorSearchManager.parse_results(results_basic), 1):
-    logger.info(f"{i}. [{row.get('category','N/A')}] {row.get('file_name','N/A')[:60]}")
+    logger.info(f"{i}. [{row.get('category', 'N/A')}] {row.get('file_name', 'N/A')[:60]}")
 
 # Strategy 2: Hybrid search
 results_hybrid = vs_manager.search(query, num_results=3, query_type="hybrid")
@@ -370,7 +366,7 @@ results_hybrid = vs_manager.search(query, num_results=3, query_type="hybrid")
 logger.info("\nStrategy 2: Hybrid Search")
 logger.info("-" * 80)
 for i, row in enumerate(VectorSearchManager.parse_results(results_hybrid), 1):
-    logger.info(f"{i}. [{row.get('category','N/A')}] {row.get('file_name','N/A')[:60]}")
+    logger.info(f"{i}. [{row.get('category', 'N/A')}] {row.get('file_name', 'N/A')[:60]}")
 
 # Strategy 3: Hybrid + Reranking
 results_reranked = vs_manager.search(
@@ -383,7 +379,7 @@ results_reranked = vs_manager.search(
 logger.info("\nStrategy 3: Hybrid + Reranking")
 logger.info("-" * 80)
 for i, row in enumerate(VectorSearchManager.parse_results(results_reranked), 1):
-    logger.info(f"{i}. [{row.get('category','N/A')}] {row.get('file_name','N/A')[:60]}")
+    logger.info(f"{i}. [{row.get('category', 'N/A')}] {row.get('file_name', 'N/A')[:60]}")
 
 # COMMAND ----------
 

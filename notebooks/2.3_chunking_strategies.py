@@ -104,6 +104,7 @@ if sample_row:
     elements = parsed_json.get("document", {}).get("elements", [])
     if elements:
         from collections import Counter
+
         type_counts = Counter(e.get("type", "unknown") for e in elements)
         logger.info(f"Element types: {dict(type_counts)}")
     else:
@@ -118,9 +119,10 @@ if sample_row:
 
 # COMMAND ----------
 
+
 def clean_text(text: str) -> str:
     """Remove excessive whitespace and fix common OCR artefacts."""
-    text = re.sub(r"\s+", " ", text)          # collapse whitespace
+    text = re.sub(r"\s+", " ", text)  # collapse whitespace
     text = re.sub(r"(\w)-\s+(\w)", r"\1\2", text)  # de-hyphenate line breaks
     return text.strip()
 
@@ -161,8 +163,7 @@ extract_chunks_udf = F.udf(
 # COMMAND ----------
 
 chunks_df = (
-    parsed_df
-    .withColumn("chunks", extract_chunks_udf(F.col("parsed_content")))
+    parsed_df.withColumn("chunks", extract_chunks_udf(F.col("parsed_content")))
     .select(
         "file_name",
         "category",
@@ -191,7 +192,9 @@ stats = chunks_df.select(
 ).first()
 
 logger.info(f"Total chunks   : {stats['total_chunks']}")
-logger.info(f"Avg length     : {stats['avg_chars']:.0f} chars (~{stats['avg_chars']/4:.0f} tokens)")
+logger.info(
+    f"Avg length     : {stats['avg_chars']:.0f} chars (~{stats['avg_chars'] / 4:.0f} tokens)"
+)
 logger.info(f"Min / Max      : {stats['min_chars']} / {stats['max_chars']} chars")
 
 chunks_df.groupBy("category").count().orderBy("count", ascending=False).show()
@@ -204,8 +207,7 @@ chunks_df.groupBy("category").count().orderBy("count", ascending=False).show()
 # COMMAND ----------
 
 (
-    chunks_df.write
-    .format("delta")
+    chunks_df.write.format("delta")
     .mode("overwrite")
     .option("overwriteSchema", "true")
     .option("delta.enableChangeDataFeed", "true")
@@ -222,7 +224,9 @@ logger.info(f"✅ Saved {n_chunks} chunks → {catalog}.{schema}.eba_chunks")
 # COMMAND ----------
 
 result_df = spark.table(f"`{catalog}`.`{schema}`.eba_chunks")
-result_df.select("file_name", "category", "chunk_index", "chunk_text").show(10, truncate=80)
+result_df.select("file_name", "category", "chunk_index", "chunk_text").show(
+    10, truncate=80
+)
 
 # COMMAND ----------
 

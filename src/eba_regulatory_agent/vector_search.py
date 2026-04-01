@@ -41,8 +41,7 @@ class VectorSearchManager:
         # VectorSearchClient, which bypasses its MLflow resolver entirely.
         w = WorkspaceClient()
         bearer_token = (
-            w.config.authenticate().get("Authorization", "")
-            .removeprefix("Bearer ")
+            w.config.authenticate().get("Authorization", "").removeprefix("Bearer ")
         )
         self.client = VectorSearchClient(
             workspace_url=w.config.host,
@@ -61,11 +60,7 @@ class VectorSearchManager:
             else []
         )
         endpoint_exists = any(
-            (
-                ep.get("name")
-                if isinstance(ep, dict)
-                else getattr(ep, "name", None)
-            )
+            (ep.get("name") if isinstance(ep, dict) else getattr(ep, "name", None))
             == self.endpoint_name
             for ep in endpoints
         )
@@ -200,8 +195,5 @@ class VectorSearchManager:
             List of dicts keyed by column name.
         """
         data_array = results.get("result", {}).get("data_array", [])
-        columns = [
-            col["name"]
-            for col in results.get("manifest", {}).get("columns", [])
-        ]
+        columns = [col["name"] for col in results.get("manifest", {}).get("columns", [])]
         return [dict(zip(columns, row, strict=False)) for row in data_array]
