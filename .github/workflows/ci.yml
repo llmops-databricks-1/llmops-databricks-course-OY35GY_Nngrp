@@ -34,13 +34,22 @@ jobs:
         uses: astral-sh/setup-uv@0c5e2b8115b80b4c7c5ddf6ffdd634974642d182 #v5.4.1
 
       - name: Install the dependencies
+        env:
+          UV_INDEX_NN_PYPI_REMOTE_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          UV_INDEX_NN_PYPI_REMOTE_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
         run: |
-          uv sync --extra ci --index-url https://pypi.org/simple
+          uv sync --extra ci
 
       - name: Run pre-commit checks
+        env:
+          UV_INDEX_NN_PYPI_REMOTE_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          UV_INDEX_NN_PYPI_REMOTE_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
         run: |
           uv run pre-commit run --all-files
 
       - name: run pytest
+        env:
+          UV_INDEX_NN_PYPI_REMOTE_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          UV_INDEX_NN_PYPI_REMOTE_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
         run: |
           uv run pytest
