@@ -1,7 +1,6 @@
 """Vector search management for EBA regulatory documents."""
 
 import time
-from typing import Any
 
 from databricks.sdk import WorkspaceClient
 from databricks.vector_search.client import VectorSearchClient
@@ -56,23 +55,33 @@ class VectorSearchManager:
     def create_endpoint_if_not_exists(self) -> None:
         """Create vector search endpoint if it doesn't exist."""
         endpoints_response = self.client.list_endpoints()
-        endpoints = endpoints_response.get("endpoints", []) if isinstance(endpoints_response, dict) else []
+        endpoints = (
+            endpoints_response.get("endpoints", [])
+            if isinstance(endpoints_response, dict)
+            else []
+        )
         endpoint_exists = any(
-            (ep.get("name") if isinstance(ep, dict) else getattr(ep, "name", None)) == self.endpoint_name
+            (
+                ep.get("name")
+                if isinstance(ep, dict)
+                else getattr(ep, "name", None)
+            )
+            == self.endpoint_name
             for ep in endpoints
         )
 
         if not endpoint_exists:
             logger.info(f"Creating vector search endpoint: {self.endpoint_name}")
             self.client.create_endpoint_and_wait(
-                name=self.endpoint_name, endpoint_type="STANDARD",
-                usage_policy_id=self.usage_policy_id
+                name=self.endpoint_name,
+                endpoint_type="STANDARD",
+                usage_policy_id=self.usage_policy_id,
             )
             logger.info(f"✓ Vector search endpoint created: {self.endpoint_name}")
         else:
             logger.info(f"✓ Vector search endpoint exists: {self.endpoint_name}")
 
-    def create_or_get_index(self) -> Any:
+    def create_or_get_index(self) -> object:
         """Create or get vector search index.
 
         Returns:
@@ -99,7 +108,7 @@ class VectorSearchManager:
                 primary_key="chunk_index",
                 embedding_source_column="chunk_text",
                 embedding_model_endpoint_name=self.embedding_model,
-                usage_policy_id=self.usage_policy_id
+                usage_policy_id=self.usage_policy_id,
             )
             logger.info(f"✓ Vector search index created: {self.index_name}")
             return index
@@ -154,7 +163,7 @@ class VectorSearchManager:
         num_results: int = 5,
         filters: dict | None = None,
         query_type: str = "ann",
-        reranker: Any | None = None,
+        reranker: object | None = None,
     ) -> dict:
         """Search the vector index.
 
@@ -169,19 +178,19 @@ class VectorSearchManager:
             Search results dictionary
         """
         index = self.client.get_index(index_name=self.index_name)
-        kwargs: dict[str, Any] = dict(
-            query_text=query,
-            columns=["chunk_index", "chunk_text", "file_name", "category"],
-            num_results=num_results,
-            filters=filters,
-            query_type=query_type,
-        )
+        kwargs: dict[str, object] = {
+            "query_text": query,
+            "columns": ["chunk_index", "chunk_text", "file_name", "category"],
+            "num_results": num_results,
+            "filters": filters,
+            "query_type": query_type,
+        }
         if reranker is not None:
             kwargs["reranker"] = reranker
         return index.similarity_search(**kwargs)
 
     @staticmethod
-    def parse_results(results: dict) -> list[dict]:
+    def parse_results(results: dict[str, object]) -> list[dict[str, object]]:
         """Convert raw similarity_search response into a list of flat dicts.
 
         Args:

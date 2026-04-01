@@ -1,7 +1,5 @@
 """EBA regulatory PDF processing — parse PDFs from Volume using ai_parse_document."""
 
-from __future__ import annotations
-
 from datetime import datetime, timezone
 
 from loguru import logger
@@ -96,9 +94,12 @@ class DataProcessor:
                 row.volume_path
                 for row in existing_df.select("volume_path").collect()
             }
-            logger.info(f"{len(already_parsed)} document(s) already parsed — skipping.")
+            logger.info(
+                f"{len(already_parsed)} document(s) already parsed — skipping."
+            )
         except Exception:
-            pass  # table doesn't exist yet
+            # The parsed table may not exist on first run.
+            already_parsed = set()
 
         if already_parsed:
             binary_df = binary_df.filter(~F.col("path").isin(already_parsed))
