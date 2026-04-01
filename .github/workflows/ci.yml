@@ -7,6 +7,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  UV_INDEX_URL: https://pypi.org/simple
 
 jobs:
   build_and_test:
@@ -35,7 +36,7 @@ jobs:
 
       - name: Install the dependencies
         run: |
-          uv sync --extra ci --index-url https://pypi.org/simple
+          uv sync --extra ci
 
       - name: Run pre-commit checks
         run: |

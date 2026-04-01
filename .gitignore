@@ -64,6 +64,7 @@ target/
 
 # Environments
 .env
+uv.toml
 .venv
 env/
 venv/
