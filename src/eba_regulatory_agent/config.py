@@ -60,8 +60,12 @@ def get_config(env: str = "dev") -> EbaConfig:
     schema = os.environ.get("EBA_SCHEMA", "tom_schouten")
     volume = os.environ.get("EBA_VOLUME", "eba_knowledge_base")
     vector_search_endpoint = os.environ.get("EBA_VS_ENDPOINT", "eba_vs_endpoint")
-    embedding_endpoint = os.environ.get("EBA_EMBEDDING_ENDPOINT", "databricks-gte-large-en")
-    llm_endpoint = os.environ.get("EBA_LLM_ENDPOINT", "databricks-meta-llama-3-3-70b-instruct")
+    embedding_endpoint = os.environ.get(
+        "EBA_EMBEDDING_ENDPOINT", "databricks-gte-large-en"
+    )
+    llm_endpoint = os.environ.get(
+        "EBA_LLM_ENDPOINT", "databricks-meta-llama-3-3-70b-instruct"
+    )
     return EbaConfig(
         env=env,
         catalog=catalog,

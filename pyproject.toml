@@ -63,8 +63,9 @@ pythonpath = ["."]
 [tool.uv]
 native-tls = true
 link-mode = "copy"
-# index-url can be set per-environment or via UV_INDEX_URL/PIP_INDEX_URL if needed
-# For CI, this defaults to public PyPI
+
+[[tool.uv.index]]
+url = "https://artifactory.insim.biz/api/pypi/nn-pypi-remote/simple"
 
 [tool.ruff]
 line-length = 90

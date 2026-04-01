@@ -124,7 +124,9 @@ class DataProcessor:
                 file_name,
                 category,
                 volume_path,
-                CAST(ai_parse_document(content, map('mode', 'TEXT')) AS STRING) AS parsed_content,
+                CAST(
+                    ai_parse_document(content, map('mode', 'TEXT')) AS STRING
+                ) AS parsed_content,
                 '{datetime.now(timezone.utc).isoformat()}' AS parsed_at
             FROM _eba_new_docs
         """)
