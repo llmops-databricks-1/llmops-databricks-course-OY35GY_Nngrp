@@ -65,7 +65,7 @@ native-tls = true
 link-mode = "copy"
 
 [[tool.uv.index]]
-url = "https://artifactory.insim.biz/api/pypi/nn-pypi-remote/simple"
+url = "https://artifactory.insim.biz/artifactory/api/pypi/nn-pypi-remote/simple"
 
 [tool.ruff]
 line-length = 90
