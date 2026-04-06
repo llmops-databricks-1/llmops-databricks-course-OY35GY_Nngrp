@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  UV_INDEX_URL: https://pypi.org/simple
+
 jobs:
   build_and_test:
     runs-on: ubuntu-latest

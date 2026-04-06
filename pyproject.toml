@@ -23,7 +23,9 @@ dependencies = [
     "databricks-agents==1.8.2",
     "psycopg==3.3.2",
     "psycopg-pool==3.3.0",
-    "psycopg[binary]==3.3.2"
+    "psycopg[binary]==3.3.2",
+    "beautifulsoup4==4.14.3",
+    "requests==2.32.3"
 ]
 
 [project.optional-dependencies]
@@ -40,7 +42,7 @@ ci = ["pre-commit>=4.1.0, <5",
 include-package-data = true
 
 [tool.setuptools.package-data]
-"your_custom_package" = ["../../../project_config.yml"]
+"eba_regulatory_agent" = ["../../../project_config.yml"]
 
 [build-system]
 requires = ["setuptools>=72.0"]
@@ -48,7 +50,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["your_custom_package*"]
+include = ["eba_regulatory_agent*"]
 
 [tool.setuptools.dynamic]
 version = { file = "version.txt" }
@@ -58,9 +60,14 @@ addopts = "-s --no-header --no-summary"
 testpaths = ["tests"]
 pythonpath = ["."]
 
+[tool.uv]
+native-tls = true
+link-mode = "copy"
+
 [tool.ruff]
 line-length = 90
 
+[tool.ruff.lint]
 select = [
     "F",    # pyflakes rules
     "E",    # pycodestyle error rules
@@ -81,8 +88,29 @@ ignore = [
     "C901",   # too complex
     "ERA001", # commented out code
     "ANN204",
-    "ANN102",
-    "ANN101"
+]
+
+[tool.ruff.lint.per-file-ignores]
+"notebooks/**.py" = [
+    "E501",   # line-too-long (notebooks often have longer demo lines)
+    "ANN",    # flake8-annotations (optional in notebooks)
+    "I001",   # unsorted-imports (common in exploratory notebooks)
+    "E402",   # module-level import not at top (normal in notebook cells)
+    "F821",   # undefined name (e.g. Databricks display())
+    "F401",   # unused-import (common in notebook cells)
+    "F541",   # f-string without placeholders
+    "UP045",  # non-pep604 Optional annotation
+    "B905",   # zip() without strict (common in exploratory code)
+]
+"notebooks/local_eba_*.py" = [
+    "E501",   # line-too-long
+    "ANN",    # flake8-annotations
+    "F401",   # unused-import (common in exploratory scripts)
+    "I001",   # unsorted-imports
+    "UP045",  # Optional[X] not needed in Python 3.12+ (stylistic)
+    "F811",   # redefined-while-unused (common in notebook cells)
+    "UP024",  # os-error-alias (stylistic)
+    "UP017",  # datetime-timezone-utc (stylistic)
 ]
 
 [tool.ruff.format]

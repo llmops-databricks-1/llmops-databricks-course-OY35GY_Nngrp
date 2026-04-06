@@ -64,6 +64,7 @@ target/
 
 # Environments
 .env
+uv.toml
 .venv
 env/
 venv/
@@ -95,3 +96,8 @@ dmypy.json
 # VS code configuration
 .vscode
 .history
+
+# Local scraped knowledge base artifacts
+eba_knowledge_base/
+notebooks/local_eba_data_scraper.py
+notebooks/local_eba_upload_to_volume.py
