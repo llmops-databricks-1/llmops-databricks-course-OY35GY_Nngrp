@@ -17,7 +17,6 @@ w.secrets.put_secret(scope="admin", key="account_id", string_value=account_id)
 # COMMAND ----------
 import requests
 from databricks.sdk import WorkspaceClient
-from requests.auth import HTTPBasicAuth
 import urllib
 
 w = WorkspaceClient()
@@ -33,7 +32,7 @@ account_host = "https://accounts.cloud.databricks.com"
 token = requests.post(
     f"{account_host}/oidc/accounts/{account_id}/v1/token",
     auth=HTTPBasicAuth(admin_client_id, admin_client_secret),
-    data={"grant_type": "client_credentials", "scope": "all-apis"}
+    data={"grant_type": "client_credentials", "scope": "all-apis"},
 ).json()["access_token"]
 
 # Step 1: Create service principal + OAuth secret
@@ -59,7 +58,11 @@ w.secrets.put_secret(scope=scope_name, key="client_secret", string_value=client_
 # COMMAND ----------
 # Step 3: Add SPN role to project
 from databricks.sdk.service.postgres import (
-    PostgresAPI, Role, RoleAuthMethod, RoleIdentityType, RoleRoleSpec,
+    PostgresAPI,
+    Role,
+    RoleAuthMethod,
+    RoleIdentityType,
+    RoleRoleSpec,
 )
 import psycopg
 
@@ -84,7 +87,7 @@ pg_api.create_role(
 ).wait()
 
 # COMMAND ----------
-# Step 4: Postgres role SQL 
+# Step 4: Postgres role SQL
 endpoint = next(iter(pg_api.list_endpoints(parent=branch_parent)))
 host = endpoint.status.hosts.host
 pg_credential = pg_api.generate_database_credential(endpoint=endpoint.name)
