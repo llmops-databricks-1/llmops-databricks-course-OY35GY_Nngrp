@@ -29,7 +29,7 @@ from databricks.vector_search.client import VectorSearchClient
 from openai import OpenAI
 from loguru import logger
 
-from arxiv_curator.config import load_config, get_env
+from eba_regulatory_agent.config import get_config, get_env
 
 # COMMAND ----------
 
@@ -40,7 +40,7 @@ from arxiv_curator.config import load_config, get_env
 
 spark = SparkSession.builder.getOrCreate()
 env = get_env(spark)
-cfg = load_config("../project_config.yml", env)
+cfg = get_config(env)
 
 w = WorkspaceClient()
 
@@ -70,21 +70,21 @@ logger.info(f"✓ Using LLM endpoint: {cfg.llm_endpoint}")
 
 
 def retrieve_documents(query: str, num_results: int = 5) -> list[dict]:
-    """Retrieve relevant documents from vector search.
+    """Retrieve relevant EBA regulatory chunks from vector search.
 
     Args:
         query: The search query
         num_results: Number of documents to retrieve
 
     Returns:
-        List of document dictionaries with title, text, and metadata
+        List of chunk dictionaries with text and EBA metadata
     """
-    index_name = f"{cfg.catalog}.{cfg.schema}.arxiv_index"
+    index_name = f"{cfg.catalog}.{cfg.schema}.eba_chunks_index"
     index = vsc.get_index(index_name=index_name)
 
     results = index.similarity_search(
         query_text=query,
-        columns=["text", "title", "arxiv_id", "authors", "year"],
+        columns=["chunk_text", "chunk_index", "file_name", "category"],
         num_results=num_results,
         query_type="hybrid",
     )
@@ -96,11 +96,10 @@ def retrieve_documents(query: str, num_results: int = 5) -> list[dict]:
         for row in data_array:
             documents.append(
                 {
-                    "text": row[0],
-                    "title": row[1],
-                    "arxiv_id": row[2],
-                    "authors": row[3],
-                    "year": row[4],
+                    "chunk_text": row[0],
+                    "chunk_index": row[1],
+                    "file_name": row[2],
+                    "category": row[3],
                 }
             )
 
@@ -115,9 +114,9 @@ docs = retrieve_documents(query, num_results=3)
 
 logger.info(f"Retrieved {len(docs)} documents for query: '{query}'")
 for i, doc in enumerate(docs, 1):
-    logger.info(f"\n{i}. {doc['title']}")
-    logger.info(f"   ArXiv ID: {doc['arxiv_id']}")
-    logger.info(f"   Text preview: {doc['text'][:150]}...")
+    logger.info(f"\n{i}. {doc['file_name']} [{doc['category']}]")
+    logger.info(f"   Chunk: {doc['chunk_index']}")
+    logger.info(f"   Text preview: {doc['chunk_text'][:150]}...")
 
 # COMMAND ----------
 
@@ -143,14 +142,15 @@ def build_rag_prompt(question: str, documents: list[dict]) -> str:
     context_parts = []
     for i, doc in enumerate(documents, 1):
         context_parts.append(f"""
-Document {i}: {doc["title"]}
-ArXiv ID: {doc["arxiv_id"]}
-Content: {doc["text"]}
+Document {i}: {doc["file_name"]}
+Category: {doc["category"]}
+Chunk Index: {doc["chunk_index"]}
+Content: {doc["chunk_text"]}
 """)
 
     context = "\n---\n".join(context_parts)
 
-    prompt = f"""You are a helpful research assistant. Answer the question based on the provided context from research papers.
+    prompt = f"""You are a helpful EBA regulatory reporting assistant. Answer the question based on the provided context from EBA documents.
 
 CONTEXT:
 {context}
@@ -160,7 +160,7 @@ QUESTION: {question}
 INSTRUCTIONS:
 - Answer based on the provided context
 - If the context doesn't contain enough information, say so
-- Cite the relevant paper titles when making claims
+- Cite the relevant file names and categories when making claims
 - Be concise but thorough
 
 ANSWER:"""
@@ -220,7 +220,12 @@ def rag_query(question: str, num_docs: int = 5) -> dict:
         "question": question,
         "answer": answer,
         "sources": [
-            {"title": doc["title"], "arxiv_id": doc["arxiv_id"]} for doc in documents
+            {
+                "file_name": doc["file_name"],
+                "category": doc["category"],
+                "chunk_index": doc["chunk_index"],
+            }
+            for doc in documents
         ],
     }
 
@@ -241,7 +246,9 @@ logger.info("=" * 80)
 logger.info(f"\nAnswer:\n{result['answer']}")
 logger.info("\nSources:")
 for src in result["sources"]:
-    logger.info(f"  - {src['title']} ({src['arxiv_id']})")
+    logger.info(
+        f"  - {src['file_name']} [{src['category']}] (chunk {src['chunk_index']})"
+    )
 
 # COMMAND ----------
 
@@ -254,7 +261,9 @@ logger.info("=" * 80)
 logger.info(f"\nAnswer:\n{result2['answer']}")
 logger.info("\nSources:")
 for src in result2["sources"]:
-    logger.info(f"  - {src['title']} ({src['arxiv_id']})")
+    logger.info(
+        f"  - {src['file_name']} [{src['category']}] (chunk {src['chunk_index']})"
+    )
 
 # COMMAND ----------
 
@@ -290,7 +299,7 @@ class SimpleRAG:
         index = self.vsc.get_index(index_name=self.index_name)
         results = index.similarity_search(
             query_text=query,
-            columns=["text", "title", "arxiv_id"],
+            columns=["chunk_text", "file_name", "category", "chunk_index"],
             num_results=num_results,
             query_type="hybrid",
         )
@@ -301,8 +310,9 @@ class SimpleRAG:
                 documents.append(
                     {
                         "text": row[0],
-                        "title": row[1],
-                        "arxiv_id": row[2],
+                        "file_name": row[1],
+                        "category": row[2],
+                        "chunk_index": row[3],
                     }
                 )
         return documents
@@ -313,15 +323,20 @@ class SimpleRAG:
         documents = self.retrieve(question, num_results=num_docs)
 
         # Build context
-        context = "\n\n".join([f"[{doc['title']}]: {doc['text']}" for doc in documents])
+        context = "\n\n".join(
+            [
+                f"[{doc['file_name']} | {doc['category']} | chunk {doc['chunk_index']}]: {doc['text']}"
+                for doc in documents
+            ]
+        )
 
         # Build system message with context
-        system_message = f"""You are a helpful research assistant. Use the following context from research papers to answer questions.
+        system_message = f"""You are a helpful EBA regulatory reporting assistant. Use the following context from EBA documents to answer questions.
 
 CONTEXT:
 {context}
 
-If the context doesn't contain relevant information, say so. Always cite paper titles when making claims."""
+If the context doesn't contain relevant information, say so. Always cite file names and categories when making claims."""
 
         # Add user message to history
         self.conversation_history.append({"role": "user", "content": question})
@@ -353,7 +368,7 @@ If the context doesn't contain relevant information, say so. Always cite paper t
 # COMMAND ----------
 
 # Create RAG instance
-index_name = f"{cfg.catalog}.{cfg.schema}.arxiv_index"
+index_name = f"{cfg.catalog}.{cfg.schema}.eba_chunks_index"
 rag = SimpleRAG(llm_endpoint=cfg.llm_endpoint, index_name=index_name)
 
 logger.info("✓ SimpleRAG initialized")
