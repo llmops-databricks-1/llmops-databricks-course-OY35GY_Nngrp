@@ -200,31 +200,26 @@ def parse_vector_search_results(results):
 # COMMAND ----------
 
 
-def search_papers(query: str, num_results: int = 5, year_filter: str = None) -> str:
-    """Search for relevant papers using vector search.
+def search_papers(query: str, num_results: int = 5) -> str:
+    """Search for relevant EBA regulatory documents using vector search.
 
     Args:
         query: Search query
         num_results: Number of results to return
-        year_filter: Optional year filter (e.g., "2024")
 
     Returns:
         JSON string with search results
     """
-    index_name = f"{cfg.catalog}.{cfg.schema}.arxiv_index"
+    index_name = f"{cfg.catalog}.{cfg.schema}.eba_chunks_index"
     index = vsc.get_index(index_name=index_name)
 
     # Build search parameters
     search_params = {
         "query_text": query,
-        "columns": ["text", "title", "arxiv_id", "authors", "year"],
+        "columns": ["chunk_index", "chunk_text", "file_name", "category"],
         "num_results": num_results,
         "query_type": "hybrid",
     }
-
-    # Add year filter if provided
-    if year_filter:
-        search_params["filters"] = {"year": year_filter}
 
     # Perform search
     results = index.similarity_search(**search_params)
@@ -234,11 +229,9 @@ def search_papers(query: str, num_results: int = 5, year_filter: str = None) -> 
     for row in parse_vector_search_results(results):
         papers.append(
             {
-                "title": row.get("title", "N/A"),
-                "arxiv_id": row.get("arxiv_id", "N/A"),
-                "authors": str(row.get("authors", "N/A")),
-                "year": row.get("year", "N/A"),
-                "excerpt": row.get("text", "")[:200] + "...",
+                "file_name": row.get("file_name", "N/A"),
+                "category": row.get("category", "N/A"),
+                "excerpt": row.get("chunk_text", "")[:200] + "...",
             }
         )
 
@@ -246,7 +239,7 @@ def search_papers(query: str, num_results: int = 5, year_filter: str = None) -> 
 
 
 # Test the function
-results = search_papers("machine learning", num_results=2)
+results = search_papers("latest regulations for MIR reporting", num_results=2)
 logger.info("Search Results:")
 logger.info(results)
 
@@ -261,22 +254,18 @@ search_papers_tool_spec = {
     "type": "function",
     "function": {
         "name": "search_papers",
-        "description": "Search for academic papers using semantic search. Returns relevant papers with titles, authors, and excerpts.",
+        "description": "Search EBA regulatory documents using semantic search. Returns relevant chunks with file name, category, and excerpt.",
         "parameters": {
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "The search query describing what papers to find",
+                    "description": "The search query describing what EBA regulatory content to find",
                 },
                 "num_results": {
                     "type": "integer",
                     "description": "Number of results to return (default: 5)",
                     "default": 5,
-                },
-                "year_filter": {
-                    "type": "string",
-                    "description": "Optional year filter to limit results (e.g., '2024')",
                 },
             },
             "required": ["query"],
@@ -294,7 +283,7 @@ logger.info(json.dumps(search_papers_tool_spec, indent=2))
 
 # COMMAND ----------
 
-# Using ToolInfo from arxiv_curator.mcp package
+# Using ToolInfo from eba_regulatory_agent.mcp package
 # This class represents a tool with name, spec, and execution function
 
 # Create tool info objects
@@ -608,3 +597,95 @@ logger.info("=" * 80)
 
 response = agent.chat("Find papers about attention mechanisms")
 logger.info(f"Agent response: {response}")
+
+# COMMAND ----------
+
+# Build a simple tool for EBA Regulatory Reporting questions
+
+
+def get_reporting_evidence(topic: str, num_results: int = 5) -> str:
+    """Return interpretable evidence chunks for an EBA reporting topic.
+
+    Args:
+        topic: Reporting topic or requirement to investigate.
+        num_results: Number of chunks to return.
+
+    Returns:
+        JSON string with category, source file, and excerpt for each match.
+    """
+    index_name = f"{cfg.catalog}.{cfg.schema}.eba_chunks_index"
+    index = vsc.get_index(index_name=index_name)
+
+    results = index.similarity_search(
+        query_text=topic,
+        columns=["chunk_index", "chunk_text", "file_name", "category"],
+        num_results=num_results,
+        query_type="hybrid",
+    )
+
+    evidence_rows = []
+    for row in parse_vector_search_results(results):
+        evidence_rows.append(
+            {
+                "category": row.get("category", "N/A"),
+                "source_file": row.get("file_name", "N/A"),
+                "chunk_index": row.get("chunk_index", "N/A"),
+                "evidence_excerpt": row.get("chunk_text", "")[:280] + "...",
+            }
+        )
+
+    return json.dumps(
+        {
+            "topic": topic,
+            "matches": len(evidence_rows),
+            "evidence": evidence_rows,
+        },
+        indent=2,
+    )
+
+
+get_reporting_evidence_tool_spec = {
+    "type": "function",
+    "function": {
+        "name": "get_reporting_evidence",
+        "description": "Retrieve interpretable evidence snippets for EBA regulatory reporting topics.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "topic": {
+                    "type": "string",
+                    "description": "Reporting topic, metric, or obligation to investigate.",
+                },
+                "num_results": {
+                    "type": "integer",
+                    "description": "Number of evidence snippets to return (default: 5).",
+                    "default": 5,
+                },
+            },
+            "required": ["topic"],
+        },
+    },
+}
+
+get_reporting_evidence_tool = ToolInfo(
+    name="get_reporting_evidence",
+    spec=get_reporting_evidence_tool_spec,
+    exec_fn=get_reporting_evidence,
+)
+
+registry.register(get_reporting_evidence_tool)
+
+agent = SimpleAgent(
+    llm_endpoint=cfg.llm_endpoint,
+    system_prompt="You are an EBA regulatory reporting assistant. Use tools to provide evidence-backed answers with source file context.",
+    tools=registry.get_all_tools(),
+)
+
+logger.info("✓ Added tool: get_reporting_evidence")
+logger.info(f"✓ Rebuilt agent with tools: {list(agent._tools_dict.keys())}")
+
+# COMMAND ----------
+# Test agent with new reporting evidence tool
+response = agent.chat("Find evidence about MIR reporting validation rules")
+logger.info(response)
+# COMMAND ----------
