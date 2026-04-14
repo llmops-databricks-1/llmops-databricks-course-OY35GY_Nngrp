@@ -21,7 +21,7 @@ from databricks.sdk.service.postgres import (
 from google.protobuf.duration_pb2 import Duration
 from loguru import logger
 
-from arxiv_curator.config import ProjectConfig
+from eba_regulatory_agent.config import ProjectConfig
 
 cfg = ProjectConfig.from_yaml("../project_config.yml")
 
@@ -29,28 +29,43 @@ w = WorkspaceClient()
 pg_api = PostgresAPI(w.api_client)
 
 project_id = cfg.lakebase_project_id
+if not project_id:
+    raise ValueError(
+        "lakebase_project_id is empty. Set EBA_LAKEBASE_PROJECT_ID or update project_config.yml."
+    )
 
 try:
     project = pg_api.get_project(name=f"projects/{project_id}")
 except Exception:
-    project = pg_api.create_project(
-        project_id=project_id,
-        project=Project(
-            spec=ProjectSpec(
-                display_name=project_id,
-                budget_policy_id=cfg.usage_policy_id,
-                default_endpoint_settings=ProjectDefaultEndpointSettings(
-                    autoscaling_limit_min_cu=1,
-                    autoscaling_limit_max_cu=4,
-                    suspend_timeout_duration=Duration(seconds=300),
-                ),
+    # Older SDKs do not support budget_policy_id on ProjectSpec.
+    try:
+        spec = ProjectSpec(
+            display_name=project_id,
+            budget_policy_id=cfg.usage_policy_id,
+            default_endpoint_settings=ProjectDefaultEndpointSettings(
+                autoscaling_limit_min_cu=1,
+                autoscaling_limit_max_cu=4,
+                suspend_timeout_duration=Duration(seconds=300),
             ),
-        ),
-    ).wait()
+        )
+    except TypeError:
+        spec = ProjectSpec(
+            display_name=project_id,
+            default_endpoint_settings=ProjectDefaultEndpointSettings(
+                autoscaling_limit_min_cu=1,
+                autoscaling_limit_max_cu=4,
+                suspend_timeout_duration=Duration(seconds=300),
+            ),
+        )
+
+    pg_api.create_project(project_id=project_id, project=Project(spec=spec)).wait()
+    project = pg_api.get_project(name=f"projects/{project_id}")
+
+project_parent = getattr(project, "name", None) or f"projects/{project_id}"
 
 # COMMAND ----------
 # Get endpoint, host, and generate credential
-default_branch = next(iter(pg_api.list_branches(parent=project.name)))
+default_branch = next(iter(pg_api.list_branches(parent=project_parent)))
 endpoint = next(iter(pg_api.list_endpoints(parent=default_branch.name)))
 host = endpoint.status.hosts.host
 
@@ -120,7 +135,7 @@ with psycopg.connect(conn_string) as conn:
 
 # COMMAND ----------
 
-from arxiv_curator.memory import LakebaseMemory
+from eba_regulatory_agent.memory import LakebaseMemory
 
 memory = LakebaseMemory(
     project_id=project_id,

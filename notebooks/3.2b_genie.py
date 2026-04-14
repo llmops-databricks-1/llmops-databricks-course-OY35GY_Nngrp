@@ -17,13 +17,13 @@
 # COMMAND ----------
 from pyspark.sql import SparkSession
 
-from arxiv_curator.config import load_config, get_env
+from eba_regulatory_agent.config import get_config, get_env
 
 spark = SparkSession.builder.getOrCreate()
 
 # Load configuration
 env = get_env(spark)
-cfg = load_config("../project_config.yml", env)
+cfg = get_config(env)
 
 catalog = cfg.catalog
 schema = cfg.schema
@@ -52,7 +52,15 @@ if hasattr(cfg, "genie_space_id") and cfg.genie_space_id:
     space_id = cfg.genie_space_id
     USE_EXISTING_SPACE = True
 else:
-    logger.info("No Genie Space configured, will create a new one")
+    # List existing spaces so you can pick one
+    existing_spaces = w.genie.list_spaces().spaces or []
+    if existing_spaces:
+        logger.info(f"Found {len(existing_spaces)} existing Genie space(s):")
+        for s in existing_spaces:
+            logger.info(f"  ID: {s.space_id}  Title: {s.title}")
+        logger.info("Set EBA_GENIE_SPACE_ID env var and re-run cfg cell to use one.")
+    else:
+        logger.info("No existing Genie spaces found — will create a new one.")
     USE_EXISTING_SPACE = False
 
 # COMMAND ----------
@@ -65,17 +73,17 @@ else:
 
 # COMMAND ----------
 
-if not USE_EXISTING_SPACE:
+if not USE_EXISTING_SPACE and not cfg.warehouse_id:
     # Create a new warehouse for the Genie space
     created = w.warehouses.create(
-        name="__2XS_arxiv_warehouse",
+        name="__2XS_EBA_warehouse",
         cluster_size="2X-Small",
         max_num_clusters=1,
         auto_stop_mins=10,
         warehouse_type=CreateWarehouseRequestWarehouseType("PRO"),
         enable_serverless_compute=True,
         tags=sql.EndpointTags(
-            custom_tags=[sql.EndpointTagPair(key="Project", value="arxiv_curator")]
+            custom_tags=[sql.EndpointTagPair(key="Project", value="eba_regulatory_agent")]
         ),
     ).result()
     warehouse_id = created.id
@@ -95,39 +103,27 @@ else:
 
 # COMMAND ----------
 
-# Configure the Genie space with arxiv_papers table
-serialized_space = {
+# Configure the Genie space with EBA chunks table
+serialzed_space = {
     "version": 1,
     "data_sources": {
         "tables": [
             {
-                "identifier": f"{catalog}.{schema}.arxiv_papers",
+                "identifier": f"{catalog}.{schema}.eba_chunks",
                 "column_configs": [
-                    {"column_name": "authors"},
-                    {"column_name": "ingest_ts", "get_example_values": True},
-                    {"column_name": "paper_id", "get_example_values": True},
                     {
-                        "column_name": "pdf_url",
+                        "column_name": "category",
                         "get_example_values": True,
                         "build_value_dictionary": True,
                     },
-                    {"column_name": "processed", "get_example_values": True},
-                    {"column_name": "published", "get_example_values": True},
+                    {"column_name": "chunk_index", "get_example_values": True},
+                    {"column_name": "chunk_text", "get_example_values": True},
                     {
-                        "column_name": "summary",
+                        "column_name": "file_name",
                         "get_example_values": True,
                         "build_value_dictionary": True,
                     },
-                    {
-                        "column_name": "title",
-                        "get_example_values": True,
-                        "build_value_dictionary": True,
-                    },
-                    {
-                        "column_name": "volume_path",
-                        "get_example_values": True,
-                        "build_value_dictionary": True,
-                    },
+                    {"column_name": "ingestion_timestamp", "get_example_values": True},
                 ],
             }
         ]
@@ -137,8 +133,8 @@ serialized_space = {
 if not USE_EXISTING_SPACE:
     space = w.genie.create_space(
         warehouse_id=warehouse_id,
-        serialized_space=json.dumps(serialized_space),
-        title="arxiv-curator-space",
+        serialized_space=json.dumps(serialzed_space),
+        title="eba-regulatory-agent-space",
     )
     space_id = space.space_id
     logger.info(f"Created new Genie Space: {space_id}")

@@ -20,8 +20,8 @@ import nest_asyncio
 from loguru import logger
 from pyspark.sql import SparkSession
 
-from arxiv_curator.config import load_config, get_env
-from arxiv_curator.mcp import create_mcp_tools
+from eba_regulatory_agent.config import get_config, get_env
+from eba_regulatory_agent.mcp import create_mcp_tools
 
 # Enable nested event loops (required for Databricks notebooks)
 nest_asyncio.apply()
@@ -31,7 +31,7 @@ spark = SparkSession.builder.getOrCreate()
 
 # Load configuration
 env = get_env(spark)
-cfg = load_config("../project_config.yml", env)
+cfg = get_config(env)
 
 w = WorkspaceClient()
 
@@ -147,12 +147,12 @@ for tool in vs_tools:
 
 # COMMAND ----------
 
-# Search for papers about machine learning
+# Search for papers about Dutch bank MIR requirements
 # The tool name is the index name with '__' separators
-tool_name = f"{cfg.catalog}__{cfg.schema}__arxiv_index"
+tool_name = f"{cfg.catalog}__{cfg.schema}__eba_chunks_index"
 
 search_result = vs_mcp_client.call_tool(
-    tool_name, {"query": "machine learning and neural networks"}
+    tool_name, {"query": "MIR requirements for dutch banks"}
 )
 
 logger.info("Search Results:")
@@ -252,7 +252,7 @@ tools_dict = {tool.name: tool for tool in mcp_tools}
 
 # Example: Use vector search tool directly
 # The tool name is the index name with '__' separators
-vector_search_tool_name = f"{cfg.catalog}__{cfg.schema}__arxiv_index"
+vector_search_tool_name = f"{cfg.catalog}__{cfg.schema}__eba_chunks_index"
 
 if vector_search_tool_name in tools_dict:
     search_tool = tools_dict[vector_search_tool_name]
@@ -461,5 +461,7 @@ for tool_name in agent._tools_dict.keys():
 logger.info("Testing agent with MCP tools:")
 logger.info("=" * 80)
 
-response = agent.chat("Find papers about transformer architectures")
+response = agent.chat("Find documents about MIR reporting requirements for Dutch banks")
 logger.info(f"Agent response: {response}")
+
+# COMMAND ----------

@@ -1,0 +1,78 @@
+# Project Configuration for LLMOps Course
+system_prompt: |
+  You are an EBA regulatory reporting assistant.
+
+  Your role is to:
+  1. Retrieve relevant EBA source content from the vector search index
+    based on the user question.
+  2. Use Genie and Lakebase context when available to refine answers.
+  3. Produce clear, evidence-based responses for regulatory reporting use cases.
+    - Reference source file/category when making claims
+    - Keep responses concise and practical
+    - Flag assumptions and missing evidence explicitly
+
+  Always ground answers in retrieved EBA regulatory content.
+
+  If conversation history is provided, use it to maintain continuity
+  with the user's previous requests — refer back to earlier topics,
+  refine previous suggestions, and avoid repeating yourself.
+
+# Development environment
+dev:
+  catalog: gfmnndipdapmlopsdev
+  schema: tom_schouten
+  volume: eba_knowledge_base
+  llm_endpoint: databricks-meta-llama-3-3-70b-instruct
+  embedding_endpoint: databricks-gte-large-en
+  warehouse_id: 4ad246784b070696
+  vector_search_endpoint: eba_vs_endpoint
+  genie_space_id: ""
+  usage_policy_id: 686c435d-90af-4c40-9ca4-442d4a3d8899
+  lakebase_project_id: eba-regulatory-agent-lakebase
+  experiment_name: /Shared/eba-regulatory-agent-course
+
+# Acceptance/Staging environment
+acc:
+  catalog: gfmnndipdapmlopsacc
+  schema: tom_schouten
+  volume: eba_knowledge_base
+  llm_endpoint: databricks-meta-llama-3-3-70b-instruct
+  embedding_endpoint: databricks-gte-large-en
+  warehouse_id: 4ad246784b070696
+  vector_search_endpoint: eba_vs_endpoint
+  genie_space_id: ""
+  usage_policy_id: 686c435d-90af-4c40-9ca4-442d4a3d8899
+  lakebase_project_id: eba-regulatory-agent-lakebase
+  experiment_name: /Shared/eba-regulatory-agent-course
+
+# Production environment
+prd:
+  catalog: gfmnndipdapmlopsprd
+  schema: tom_schouten
+  volume: eba_knowledge_base
+  llm_endpoint: databricks-meta-llama-3-3-70b-instruct
+  embedding_endpoint: databricks-gte-large-en
+  warehouse_id: 4ad246784b070696
+  vector_search_endpoint: eba_vs_endpoint
+  genie_space_id: ""
+  usage_policy_id: 686c435d-90af-4c40-9ca4-442d4a3d8899
+  lakebase_project_id: eba-regulatory-agent-lakebase
+  experiment_name: /Shared/eba-regulatory-agent-course
+
+# Model configuration
+model_config:
+  temperature: 0.7
+  max_tokens: 2000
+  top_p: 0.95
+
+# Vector search configuration
+vector_search:
+  embedding_dimension: 1024
+  similarity_metric: cosine
+  num_results: 5
+
+# Chunking configuration
+chunking:
+  chunk_size: 512
+  chunk_overlap: 50
+  separator: "\n\n"
