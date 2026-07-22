@@ -595,7 +595,9 @@ logger.info(f"Agent response: {response}")
 logger.info("Testing agent with search tool:")
 logger.info("=" * 80)
 
-response = agent.chat("Find papers about the latest changes for Dutch banks for liquidity reporting")
+response = agent.chat(
+    "Find papers about the latest changes for Dutch banks for liquidity reporting"
+)
 logger.info(f"Agent response: {response}")
 
 # COMMAND ----------

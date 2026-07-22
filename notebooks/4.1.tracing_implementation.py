@@ -20,7 +20,7 @@ from loguru import logger
 from pyspark.sql import SparkSession
 import os
 from dotenv import load_dotenv
-from arxiv_curator.config import load_config, get_env
+from eba_regulatory_agent.config import load_config, get_env
 
 # COMMAND ----------
 
